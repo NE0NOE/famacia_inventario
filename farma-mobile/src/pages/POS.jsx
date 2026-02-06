@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, Package } from 'lucide-react';
-
+import { productsAPI, salesAPI } from '@/services/api';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorMessage from '@/components/ui/ErrorMessage';
 import Modal from '@/components/ui/modal';
 
 const POS = () => {
@@ -12,14 +14,33 @@ const POS = () => {
     const [search, setSearch] = useState('');
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('Efectivo');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [saleNumber, setSaleNumber] = useState(null);
 
-    // Sample data
-    const products = [
-        { id: 1, name: 'Paracetamol 500mg', price: 5.50, stock: 50 },
-        { id: 2, name: 'Amoxicilina 500mg', price: 12.00, stock: 20 },
-        { id: 3, name: 'Ibuprofeno 400mg', price: 8.25, stock: 35 },
-        { id: 4, name: 'Vitamina C 1g', price: 15.00, stock: 15 },
-    ];
+    // API data states
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Fetch products from API
+    useEffect(() => {
+        loadProducts();
+    }, []);
+
+    const loadProducts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await productsAPI.getAll();
+            setProducts(data);
+        } catch (err) {
+            setError(err);
+            console.error('Error loading products:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const addToCart = (product) => {
         const existing = cart.find(item => item.id === product.id);
@@ -46,6 +67,39 @@ const POS = () => {
         }));
     };
 
+    const completeSale = async () => {
+        if (cart.length === 0) return;
+
+        setIsProcessing(true);
+        try {
+            const saleData = {
+                subtotal: subtotal,
+                total: subtotal,
+                payment_method: paymentMethod,
+                items: cart.map(item => ({
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    price_at_sale: item.price
+                }))
+            };
+
+            const result = await salesAPI.create(saleData);
+            setSaleNumber(result.id);
+            setIsSuccessModalOpen(true);
+
+            // Clear cart
+            setCart([]);
+
+            // Reload products to update stock
+            await loadProducts();
+        } catch (err) {
+            alert('Error al procesar la venta: ' + (err.message || 'Error desconocido'));
+            console.error('Error creating sale:', err);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
     return (
@@ -66,22 +120,39 @@ const POS = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                        {products.map(product => (
-                            <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none" onClick={() => addToCart(product)}>
-                                <div className="h-24 bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
-                                    <Package size={40} />
-                                </div>
-                                <CardContent className="p-4">
-                                    <h3 className="font-bold text-gray-800 text-lg mb-1">{product.name}</h3>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-primary font-bold text-xl">C$ {product.price.toFixed(2)}</span>
-                                        <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">Stock: {product.stock}</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                    {loading ? (
+                        <LoadingSpinner size="lg" text="Cargando productos..." className="py-20" />
+                    ) : error ? (
+                        <ErrorMessage error={error} onRetry={loadProducts} className="py-20" />
+                    ) : products.length === 0 ? (
+                        <div className="text-center py-20 text-muted-foreground">
+                            <Package size={48} className="mx-auto mb-4 opacity-50" />
+                            <p>No hay productos disponibles</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                            {products
+                                .filter(product =>
+                                    product.name.toLowerCase().includes(search.toLowerCase()) ||
+                                    product.sku?.toLowerCase().includes(search.toLowerCase())
+                                )
+                                .map(product => (
+                                    <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none" onClick={() => addToCart(product)}>
+                                        <div className="h-24 bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
+                                            <Package size={40} />
+                                        </div>
+                                        <CardContent className="p-4">
+                                            <h3 className="font-bold text-gray-800 text-lg mb-1">{product.name}</h3>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-primary font-bold text-xl">C$ {Number(product.price).toFixed(2)}</span>
+                                                <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">Stock: {product.stock}</span>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            }
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Cart Summary - Desktop */}
@@ -134,23 +205,31 @@ const POS = () => {
                             <span>C$ {subtotal.toFixed(2)}</span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2">
-                                <CreditCard size={20} className="group-hover:text-primary transition-colors" />
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <Button
+                                variant={paymentMethod === 'Tarjeta' ? 'default' : 'outline'}
+                                className="flex flex-col h-16 gap-1 group border-2"
+                                onClick={() => setPaymentMethod('Tarjeta')}
+                            >
+                                <CreditCard size={20} className={paymentMethod === 'Tarjeta' ? 'text-white' : 'text-gray-600'} />
                                 <span className="text-xs uppercase font-bold">Tarjeta</span>
                             </Button>
-                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2 border-primary bg-primary/5">
-                                <Banknote size={20} className="text-primary" />
-                                <span className="text-xs uppercase font-bold text-primary">Efectivo</span>
+                            <Button
+                                variant={paymentMethod === 'Efectivo' ? 'default' : 'outline'}
+                                className="flex flex-col h-16 gap-1 group border-2"
+                                onClick={() => setPaymentMethod('Efectivo')}
+                            >
+                                <Banknote size={20} className={paymentMethod === 'Efectivo' ? 'text-white' : 'text-gray-600'} />
+                                <span className="text-xs uppercase font-bold">Efectivo</span>
                             </Button>
                         </div>
 
                         <Button
                             className="w-full h-14 text-lg font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
-                            disabled={cart.length === 0}
-                            onClick={() => setIsSuccessModalOpen(true)}
+                            disabled={cart.length === 0 || isProcessing}
+                            onClick={completeSale}
                         >
-                            FINALIZAR VENTA
+                            {isProcessing ? 'Procesando...' : 'FINALIZAR VENTA'}
                         </Button>
                     </div>
                 </div>
@@ -186,24 +265,29 @@ const POS = () => {
                             <span>C$ {subtotal.toFixed(2)}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2">
-                                <CreditCard size={20} className="group-hover:text-primary transition-colors" />
+                            <Button
+                                variant={paymentMethod === 'Tarjeta' ? 'default' : 'outline'}
+                                className="flex flex-col h-16 gap-1 border-2"
+                                onClick={() => setPaymentMethod('Tarjeta')}
+                            >
+                                <CreditCard size={20} className={paymentMethod === 'Tarjeta' ? 'text-white' : 'text-gray-600'} />
                                 <span className="text-xs uppercase font-bold">Tarjeta</span>
                             </Button>
-                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2 border-primary bg-primary/5">
-                                <Banknote size={20} className="text-primary" />
-                                <span className="text-xs uppercase font-bold text-primary">Efectivo</span>
+                            <Button
+                                variant={paymentMethod === 'Efectivo' ? 'default' : 'outline'}
+                                className="flex flex-col h-16 gap-1 border-2"
+                                onClick={() => setPaymentMethod('Efectivo')}
+                            >
+                                <Banknote size={20} className={paymentMethod === 'Efectivo' ? 'text-white' : 'text-gray-600'} />
+                                <span className="text-xs uppercase font-bold">Efectivo</span>
                             </Button>
                         </div>
                         <Button
-                            className="w-full h-14 text-lg font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
-                            disabled={cart.length === 0}
-                            onClick={() => {
-                                setIsSuccessModalOpen(true);
-                                setIsCartOpen(false);
-                            }}
+                            className="w-full h-14 text-lg font-bold"
+                            disabled={cart.length === 0 || isProcessing}
+                            onClick={completeSale}
                         >
-                            FINALIZAR VENTA
+                            {isProcessing ? 'Procesando...' : 'FINALIZAR VENTA'}
                         </Button>
                     </div>
                 }
@@ -239,30 +323,30 @@ const POS = () => {
                 </div>
             </Modal>
 
+            {/* Success Modal */}
             <Modal
                 isOpen={isSuccessModalOpen}
                 onClose={() => {
                     setIsSuccessModalOpen(false);
-                    setCart([]);
-                    setIsCartOpen(false);
+                    setSaleNumber(null);
                 }}
-                title="¡Venta Exitosa!"
-                className="max-w-sm text-center"
-                footer={
-                    <Button className="w-full font-bold" onClick={() => {
-                        setIsSuccessModalOpen(false);
-                        setCart([]);
-                    }}>
-                        Aceptar e Imprimir Ticket
-                    </Button>
-                }
+                title="¡Venta Completada!"
             >
-                <div className="py-6 flex flex-col items-center gap-4">
-                    <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
-                        <Package size={40} className="stroke-[3]" />
+                <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <ShoppingCart className="text-green-600" size={32} />
                     </div>
-                    <h3 className="text-2xl font-black text-gray-800">C$ {subtotal.toFixed(2)}</h3>
-                    <p className="text-gray-500 font-medium">La transacción se ha procesado correctamente.</p>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Venta #{saleNumber || '---'}</h3>
+                    <p className="text-gray-600 mb-4">La venta se ha registrado exitosamente</p>
+                    <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                        <p className="text-sm text-gray-600">Total</p>
+                        <p className="text-3xl font-black text-primary">C$ {subtotal.toFixed(2)}</p>
+                        <p className="text-sm text-gray-600 mt-2">Método: {paymentMethod}</p>
+                    </div>
+                    <Button className="w-full" onClick={() => {
+                        setIsSuccessModalOpen(false);
+                        setSaleNumber(null);
+                    }}>Aceptar</Button>
                 </div>
             </Modal>
         </Layout >

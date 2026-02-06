@@ -17,7 +17,14 @@ app.get('/', (req, res) => {
 });
 
 const productRoutes = require('./routes/products');
+const clientRoutes = require('./routes/clients');
+const supplierRoutes = require('./routes/suppliers');
+const saleRoutes = require('./routes/sales');
+
 app.use('/api/products', productRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/sales', saleRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
