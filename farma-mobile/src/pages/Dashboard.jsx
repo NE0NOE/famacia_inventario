@@ -31,10 +31,10 @@ const Clock = () => {
     }, []);
 
     return (
-        <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg backdrop-blur-md border border-white/20 font-bold">
-            <ClockIcon size={18} className="text-blue-100" />
-            <span className="text-sm">
-                {time.toLocaleDateString('es-NI', { weekday: 'long', day: 'numeric', month: 'long' })} • {time.toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        <div className="flex items-center gap-2 bg-white/10 px-3 md:px-4 py-1.5 md:py-2 rounded-lg backdrop-blur-md border border-white/20 font-bold">
+            <ClockIcon size={16} className="text-blue-100 md:block hidden" />
+            <span className="text-xs md:text-sm">
+                {time.toLocaleDateString('es-NI', { weekday: 'short', day: 'numeric', month: 'short' })} • {time.toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' })}
             </span>
         </div>
     );
@@ -47,15 +47,15 @@ const Dashboard = () => {
     return (
         <Layout>
             {/* Header Section with Wave */}
-            <div className="relative bg-mesh-gradient pb-32 pt-12 px-8 shadow-lg overflow-hidden">
+            <div className="relative bg-mesh-gradient pb-24 md:pb-32 pt-8 md:pt-12 px-4 md:px-8 shadow-lg overflow-hidden">
                 {/* Decorative Circles */}
                 <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-white/10 blur-3xl"></div>
                 <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
 
-                <div className="relative z-10 flex flex-col lg:flex-row lg:justify-between lg:items-center text-white gap-6">
+                <div className="relative z-10 flex flex-col lg:flex-row lg:justify-between lg:items-center text-white gap-4 md:gap-6">
                     <div>
-                        <h2 className="text-4xl font-black tracking-tight mb-2">Dashboard</h2>
-                        <p className="text-blue-100 text-lg opacity-90">Resumen general de Farmacia Dulce Esperanza</p>
+                        <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-1 md:mb-2">Dashboard</h2>
+                        <p className="text-blue-100 text-sm md:text-lg opacity-90">Resumen general de Farmacia Dulce Esperanza</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                         <Clock />
@@ -71,8 +71,8 @@ const Dashboard = () => {
             </div>
 
             {/* Main Content Areas with Overlapping Cards */}
-            <div className="px-8 -mt-24 relative z-20 pb-12">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <div className="px-4 md:px-8 -mt-16 md:-mt-24 relative z-20 pb-12">
+                <div className="grid gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 md:mb-8">
                     <StatCard
                         title="Ventas del Día"
                         value="C$ 1,245.50"
@@ -101,8 +101,8 @@ const Dashboard = () => {
                     />
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                    <Card className="col-span-4 border-none shadow-md">
+                <div className="grid gap-4 md:gap-6 grid-cols-1 lg:grid-cols-7">
+                    <Card className="lg:col-span-4 border-none shadow-md">
                         <CardHeader>
                             <CardTitle className="text-xl text-primary">Ventas Recientes</CardTitle>
                         </CardHeader>
@@ -129,7 +129,7 @@ const Dashboard = () => {
                         </CardContent>
                     </Card>
 
-                    <Card className="col-span-3 border-none shadow-md">
+                    <Card className="lg:col-span-3 border-none shadow-md">
                         <CardHeader>
                             <CardTitle className="text-xl text-primary">Top Productos</CardTitle>
                         </CardHeader>

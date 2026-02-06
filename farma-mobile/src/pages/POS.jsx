@@ -11,6 +11,7 @@ const POS = () => {
     const [cart, setCart] = useState([]);
     const [search, setSearch] = useState('');
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+    const [isCartOpen, setIsCartOpen] = useState(false);
 
     // Sample data
     const products = [
@@ -52,9 +53,9 @@ const POS = () => {
             <div className="flex h-[calc(100vh)] bg-transparent">
                 {/* Left: Product Selection */}
                 <div className="flex-1 p-6 overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-primary">Venta de Productos</h2>
-                        <div className="relative w-72">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-3">
+                        <h2 className="text-xl md:text-2xl font-bold text-primary">Venta de Productos</h2>
+                        <div className="relative w-full md:w-72">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                             <Input
                                 className="pl-10"
@@ -65,7 +66,7 @@ const POS = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         {products.map(product => (
                             <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none" onClick={() => addToCart(product)}>
                                 <div className="h-24 bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
@@ -83,8 +84,8 @@ const POS = () => {
                     </div>
                 </div>
 
-                {/* Right: Cart Summary */}
-                <div className="w-96 bg-white border-l shadow-2xl flex flex-col">
+                {/* Right: Cart Summary - Desktop */}
+                <div className="hidden md:flex w-96 bg-white border-l shadow-2xl flex-col">
                     <div className="p-6 bg-mesh-gradient text-white">
                         <div className="flex items-center gap-3">
                             <ShoppingCart />
@@ -155,11 +156,95 @@ const POS = () => {
                 </div>
             </div>
 
+            {/* Floating Cart Button - Mobile */}
+            <button
+                onClick={() => setIsCartOpen(true)}
+                className="md:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg z-40 flex items-center gap-2"
+            >
+                <ShoppingCart size={24} />
+                {cart.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                        {cart.length}
+                    </span>
+                )}
+            </button>
+
+            {/* Cart Modal - Mobile */}
+            <Modal
+                isOpen={isCartOpen}
+                onClose={() => setIsCartOpen(false)}
+                title="Carrito de Venta"
+                className="md:hidden"
+                footer={
+                    <div className="space-y-3">
+                        <div className="flex justify-between text-lg">
+                            <span className="text-gray-600">Subtotal</span>
+                            <span className="font-medium">C$ {subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-2xl font-black text-primary">
+                            <span>TOTAL</span>
+                            <span>C$ {subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2">
+                                <CreditCard size={20} className="group-hover:text-primary transition-colors" />
+                                <span className="text-xs uppercase font-bold">Tarjeta</span>
+                            </Button>
+                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2 border-primary bg-primary/5">
+                                <Banknote size={20} className="text-primary" />
+                                <span className="text-xs uppercase font-bold text-primary">Efectivo</span>
+                            </Button>
+                        </div>
+                        <Button
+                            className="w-full h-14 text-lg font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
+                            disabled={cart.length === 0}
+                            onClick={() => {
+                                setIsSuccessModalOpen(true);
+                                setIsCartOpen(false);
+                            }}
+                        >
+                            FINALIZAR VENTA
+                        </Button>
+                    </div>
+                }
+            >
+                <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+                    {cart.length === 0 ? (
+                        <div className="h-40 flex flex-col items-center justify-center text-muted-foreground opacity-50">
+                            <ShoppingCart size={48} className="mb-2" />
+                            <p>El carrito está vacío</p>
+                        </div>
+                    ) : (
+                        cart.map(item => (
+                            <div key={item.id} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
+                                <div className="flex-1">
+                                    <p className="font-bold text-gray-800">{item.name}</p>
+                                    <p className="text-primary font-bold">C$ {(item.price * item.quantity).toFixed(2)}</p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1); }}>
+                                            <Minus size={14} />
+                                        </Button>
+                                        <span className="font-bold w-6 text-center">{item.quantity}</span>
+                                        <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, 1); }}>
+                                            <Plus size={14} />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeFromCart(item.id)}>
+                                    <Trash2 size={18} />
+                                </Button>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </Modal>
+
             <Modal
                 isOpen={isSuccessModalOpen}
                 onClose={() => {
                     setIsSuccessModalOpen(false);
-                    setCart([]); // Clear cart on close
+                    setCart([]);
+                    setIsCartOpen(false);
                 }}
                 title="¡Venta Exitosa!"
                 className="max-w-sm text-center"
@@ -180,7 +265,7 @@ const POS = () => {
                     <p className="text-gray-500 font-medium">La transacción se ha procesado correctamente.</p>
                 </div>
             </Modal>
-        </Layout>
+        </Layout >
     );
 };
 

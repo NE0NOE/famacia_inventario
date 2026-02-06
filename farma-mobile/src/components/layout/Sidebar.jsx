@@ -19,7 +19,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
 
     return (
         <div className={cn(
-            "h-screen bg-sidebar-gradient text-white flex flex-col fixed left-0 top-0 shadow-2xl z-30 transition-all duration-300",
+            "hidden md:flex h-screen bg-sidebar-gradient text-white flex-col fixed left-0 top-0 shadow-2xl z-30 transition-all duration-300",
             isCollapsed ? "w-20" : "w-64"
         )}>
             {/* Toggle Button */}
