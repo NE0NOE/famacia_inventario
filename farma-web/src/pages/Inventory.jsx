@@ -1,29 +1,148 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, Filter, MoreVertical, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
+import { Search, Plus, Filter, Edit2, Trash2, ArrowUpDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Modal from '@/components/ui/modal';
+import { productsAPI } from '@/services/api';
 
 const Inventory = () => {
-    const [products, setProducts] = useState([
-        { id: '001', name: 'Paracetamol 500mg', category: 'Analgésicos', price: 5.50, stock: 120, status: 'Disponible' },
-        { id: '002', name: 'Amoxicilina 500mg', category: 'Antibióticos', price: 12.00, stock: 15, status: 'Bajo Stock' },
-        { id: '003', name: 'Ibuprofeno 400mg', category: 'Antiinflamatorios', price: 8.25, stock: 85, status: 'Disponible' },
-        { id: '004', name: 'Omeprazol 20mg', category: 'Gastrointestinal', price: 10.50, stock: 0, status: 'Agotado' },
-        { id: '005', name: 'Loratadina 10mg', category: 'Antialérgicos', price: 7.00, stock: 200, status: 'Disponible' },
-        { id: '006', name: 'Enalapril 10mg', category: 'Cardiovascular', price: 9.50, stock: 45, status: 'Disponible' },
-    ]);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Form state
+    const [formData, setFormData] = useState({
+        sku: '',
+        name: '',
+        category: '',
+        price: '',
+        stock: ''
+    });
+
+    useEffect(() => {
+        loadProducts();
+    }, []);
+
+    const loadProducts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await productsAPI.getAll();
+            setProducts(data);
+        } catch (err) {
+            setError(err);
+            console.error('Error loading products:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getStatus = (stock) => {
+        if (stock === 0) return 'Agotado';
+        if (stock < 20) return 'Bajo Stock';
+        return 'Disponible';
+    };
+
+    const handleAddProduct = async () => {
+        if (!formData.name || !formData.price) {
+            alert('Nombre y precio son requeridos');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await productsAPI.create({
+                sku: formData.sku || `SKU-${Date.now()}`,
+                name: formData.name,
+                category: formData.category || 'General',
+                price: parseFloat(formData.price),
+                stock: parseInt(formData.stock) || 0
+            });
+            await loadProducts();
+            setIsAddModalOpen(false);
+            resetForm();
+        } catch (err) {
+            alert('Error al crear producto: ' + err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleEditProduct = async () => {
+        if (!formData.name || !formData.price) {
+            alert('Nombre y precio son requeridos');
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            await productsAPI.update(selectedProduct.id, {
+                sku: formData.sku,
+                name: formData.name,
+                category: formData.category,
+                price: parseFloat(formData.price),
+                stock: parseInt(formData.stock)
+            });
+            await loadProducts();
+            setIsEditModalOpen(false);
+            setSelectedProduct(null);
+            resetForm();
+        } catch (err) {
+            alert('Error al actualizar producto: ' + err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteProduct = async () => {
+        setIsSubmitting(true);
+        try {
+            await productsAPI.delete(selectedProduct.id);
+            await loadProducts();
+            setIsDeleteModalOpen(false);
+            setSelectedProduct(null);
+        } catch (err) {
+            alert('Error al eliminar: ' + err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const openEditModal = (product) => {
+        setSelectedProduct(product);
+        setFormData({
+            sku: product.sku || '',
+            name: product.name,
+            category: product.category || '',
+            price: product.price.toString(),
+            stock: product.stock.toString()
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const openDeleteModal = (product) => {
+        setSelectedProduct(product);
+        setIsDeleteModalOpen(true);
+    };
+
+    const resetForm = () => {
+        setFormData({ sku: '', name: '', category: '', price: '', stock: '' });
+    };
 
     const filteredProducts = products.filter(product =>
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase())
+        product.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.category?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -36,7 +155,7 @@ const Inventory = () => {
                     </div>
                     <Button
                         className="bg-white text-primary hover:bg-blue-50 font-bold px-6 h-12 shadow-lg rounded-xl active:scale-95 transition-all"
-                        onClick={() => setIsAddModalOpen(true)}
+                        onClick={() => { resetForm(); setIsAddModalOpen(true); }}
                     >
                         <Plus className="mr-2 h-5 w-5" /> Agregar Producto
                     </Button>
@@ -57,124 +176,252 @@ const Inventory = () => {
                                 />
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button variant="outline" className="h-11 border-2 font-bold gap-2">
-                                    <Filter size={18} /> Filtros
-                                </Button>
-                                <Button variant="outline" className="h-11 border-2 font-bold gap-2">
-                                    <ArrowUpDown size={18} /> Ordenar
+                                <Button variant="outline" className="h-11 border-2 font-bold gap-2" onClick={loadProducts}>
+                                    <Loader2 size={18} className={loading ? 'animate-spin' : ''} /> Recargar
                                 </Button>
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50/50 border-b border-gray-100">
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider">ID</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider">Producto</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider">Categoría</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-right">Precio</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-center">Stock</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-center">Estado</th>
-                                        <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-right">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {filteredProducts.map((product) => (
-                                        <tr key={product.id} className="hover:bg-blue-50/30 transition-colors group">
-                                            <td className="px-6 py-4 font-mono text-xs text-gray-500">{product.id}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="font-bold text-gray-800">{product.name}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="bg-slate-100 px-3 py-1 rounded-full text-xs font-semibold text-gray-600">
-                                                    {product.category}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-black text-gray-700">
-                                                C$ {product.price.toFixed(2)}
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={cn(
-                                                    "font-bold",
-                                                    product.stock <= 20 ? "text-orange-600" : "text-gray-800"
-                                                )}>
-                                                    {product.stock}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={cn(
-                                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                                                    product.status === 'Disponible' && "bg-green-50 text-green-600 border-green-200",
-                                                    product.status === 'Bajo Stock' && "bg-orange-50 text-orange-600 border-orange-200",
-                                                    product.status === 'Agotado' && "bg-red-50 text-red-600 border-red-200",
-                                                )}>
-                                                    {product.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-100">
-                                                        <Edit2 size={16} />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:bg-red-100">
-                                                        <Trash2 size={16} />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="p-6 border-t border-gray-100 flex justify-between items-center bg-slate-50/30">
-                            <span className="text-sm text-muted-foreground font-medium">Mostrando {filteredProducts.length} de {products.length} productos</span>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="font-bold border-2">Anterior</Button>
-                                <Button variant="outline" size="sm" className="font-bold border-2">Siguiente</Button>
+                        {loading ? (
+                            <div className="flex justify-center items-center py-20">
+                                <Loader2 className="h-12 w-12 animate-spin text-primary" />
                             </div>
-                        </div>
+                        ) : error ? (
+                            <div className="text-center py-20 text-red-500">
+                                <p>Error al cargar productos</p>
+                                <Button onClick={loadProducts} className="mt-4">Reintentar</Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50 border-b border-gray-100">
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider">SKU</th>
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider">Producto</th>
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider">Categoría</th>
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-right">Precio</th>
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-center">Stock</th>
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-center">Estado</th>
+                                                <th className="px-6 py-4 text-sm font-bold text-gray-400 uppercase tracking-wider text-right">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {filteredProducts.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No hay productos</td>
+                                                </tr>
+                                            ) : (
+                                                filteredProducts.map((product) => {
+                                                    const status = getStatus(product.stock);
+                                                    return (
+                                                        <tr key={product.id} className="hover:bg-blue-50/30 transition-colors group">
+                                                            <td className="px-6 py-4 font-mono text-xs text-gray-500">{product.sku}</td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="font-bold text-gray-800">{product.name}</span>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="bg-slate-100 px-3 py-1 rounded-full text-xs font-semibold text-gray-600">
+                                                                    {product.category}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right font-black text-gray-700">
+                                                                C$ {parseFloat(product.price).toFixed(2)}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <span className={cn(
+                                                                    "font-bold",
+                                                                    product.stock < 20 ? "text-orange-600" : "text-gray-800"
+                                                                )}>
+                                                                    {product.stock}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <span className={cn(
+                                                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                                                    status === 'Disponible' && "bg-green-50 text-green-600 border-green-200",
+                                                                    status === 'Bajo Stock' && "bg-orange-50 text-orange-600 border-orange-200",
+                                                                    status === 'Agotado' && "bg-red-50 text-red-600 border-red-200",
+                                                                )}>
+                                                                    {status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-100" onClick={() => openEditModal(product)}>
+                                                                        <Edit2 size={16} />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:bg-red-100" onClick={() => openDeleteModal(product)}>
+                                                                        <Trash2 size={16} />
+                                                                    </Button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="p-6 border-t border-gray-100 flex justify-between items-center bg-slate-50/30">
+                                    <span className="text-sm text-muted-foreground font-medium">
+                                        Mostrando {filteredProducts.length} de {products.length} productos
+                                    </span>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Add Product Modal */}
             <Modal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
                 title="Agregar Nuevo Producto"
                 footer={
                     <>
-                        <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancelar</Button>
-                        <Button onClick={() => setIsAddModalOpen(false)}>Guardar Producto</Button>
+                        <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+                        <Button onClick={handleAddProduct} disabled={isSubmitting}>
+                            {isSubmitting ? 'Guardando...' : 'Guardar Producto'}
+                        </Button>
                     </>
                 }
             >
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Nombre del Producto</label>
-                            <Input placeholder="Ej. Paracetamol" />
+                            <label className="text-sm font-bold text-gray-700">Nombre del Producto *</label>
+                            <Input
+                                placeholder="Ej. Paracetamol 500mg"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Código / SKU</label>
-                            <Input placeholder="Ej. PROD-001" />
+                            <Input
+                                placeholder="Ej. PARA-001"
+                                value={formData.sku}
+                                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-gray-700">Categoría</label>
-                        <Input placeholder="Seleccionar categoría" />
+                        <Input
+                            placeholder="Ej. Analgésicos"
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Precio (C$)</label>
-                            <Input type="number" placeholder="0.00" />
+                            <label className="text-sm font-bold text-gray-700">Precio (C$) *</label>
+                            <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Stock Inicial</label>
-                            <Input type="number" placeholder="0" />
+                            <Input
+                                type="number"
+                                placeholder="0"
+                                value={formData.stock}
+                                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                            />
                         </div>
                     </div>
+                </div>
+            </Modal>
+
+            {/* Edit Product Modal */}
+            <Modal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                title="Editar Producto"
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+                        <Button onClick={handleEditProduct} disabled={isSubmitting}>
+                            {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Nombre del Producto *</label>
+                            <Input
+                                placeholder="Ej. Paracetamol 500mg"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Código / SKU</label>
+                            <Input
+                                placeholder="Ej. PARA-001"
+                                value={formData.sku}
+                                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700">Categoría</label>
+                        <Input
+                            placeholder="Ej. Analgésicos"
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Precio (C$) *</label>
+                            <Input
+                                type="number"
+                                placeholder="0.00"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-gray-700">Stock</label>
+                            <Input
+                                type="number"
+                                placeholder="0"
+                                value={formData.stock}
+                                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                title="Eliminar Producto"
+                footer={
+                    <>
+                        <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+                        <Button variant="destructive" onClick={handleDeleteProduct} disabled={isSubmitting}>
+                            {isSubmitting ? 'Eliminando...' : 'Eliminar'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="py-4">
+                    <p className="text-gray-600">
+                        ¿Estás seguro de que deseas eliminar <strong>{selectedProduct?.name}</strong>?
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">Esta acción no se puede deshacer.</p>
                 </div>
             </Modal>
         </Layout>

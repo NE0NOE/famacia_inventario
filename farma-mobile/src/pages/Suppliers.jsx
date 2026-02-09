@@ -3,9 +3,10 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Phone, Mail, MapPin, Globe, ExternalLink, Edit2, Trash2, Building2 } from 'lucide-react';
+import { Search, Plus, Phone, Mail, MapPin, Globe, ExternalLink, Edit2, Trash2, Building2, ShoppingCart, CheckCircle } from 'lucide-react';
 import Modal from '@/components/ui/modal';
-import { suppliersAPI } from '@/services/api';
+import AlertModal from '@/components/ui/AlertModal';
+import { suppliersAPI, productsAPI, purchasesAPI } from '@/services/api';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ErrorMessage from '@/components/ui/ErrorMessage';
 
@@ -16,9 +17,27 @@ const Suppliers = () => {
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+    const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [currentSupplier, setCurrentSupplier] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Order State
+    const [products, setProducts] = useState([]);
+    const [orderItems, setOrderItems] = useState([]);
+    const [selectedProduct, setSelectedProduct] = useState('');
+    const [orderQuantity, setOrderQuantity] = useState(1);
+    const [orderCost, setOrderCost] = useState(0);
+    const [pendingPurchases, setPendingPurchases] = useState([]);
+
+    // Alert State
+    const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+
+    const showAlert = (title, message, type = 'info') => {
+        setAlertState({ isOpen: true, title, message, type });
+    };
 
     const [formData, setFormData] = useState({
         name: '',
@@ -30,6 +49,8 @@ const Suppliers = () => {
 
     useEffect(() => {
         loadSuppliers();
+        loadProducts();
+        loadPurchases();
     }, []);
 
     const loadSuppliers = async () => {
@@ -45,41 +66,48 @@ const Suppliers = () => {
         }
     };
 
+    const loadProducts = async () => {
+        try {
+            const data = await productsAPI.getAll();
+            setProducts(data);
+        } catch (err) {
+            console.error('Error loading products:', err);
+        }
+    };
+
+    const loadPurchases = async () => {
+        try {
+            const data = await purchasesAPI.getAll();
+            const pending = data.filter(p => p.status === 'pending');
+            setPendingPurchases(pending);
+        } catch (err) {
+            console.error('Error loading purchases:', err);
+        }
+    };
+
     const resetForm = () => {
-        setFormData({
-            name: '',
-            contact_person: '',
-            phone: '',
-            email: '',
-            category: ''
-        });
+        setFormData({ name: '', contact_person: '', phone: '', email: '', category: '' });
+        setCurrentSupplier(null);
     };
 
     const handleAdd = async () => {
-        if (!formData.name) {
-            alert('El nombre de la empresa es requerido');
-            return;
-        }
-
+        if (!formData.name) return showAlert('Error', 'El nombre es requerido', 'error');
         setIsSubmitting(true);
         try {
             await suppliersAPI.create(formData);
             await loadSuppliers();
             setIsAddModalOpen(false);
             resetForm();
+            showAlert('Éxito', 'Proveedor creado correctamente', 'success');
         } catch (err) {
-            alert('Error al crear proveedor: ' + err.message);
+            showAlert('Error', err.message, 'error');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleEdit = async () => {
-        if (!formData.name) {
-            alert('El nombre de la empresa es requerido');
-            return;
-        }
-
+        if (!formData.name) return showAlert('Error', 'El nombre es requerido', 'error');
         setIsSubmitting(true);
         try {
             await suppliersAPI.update(currentSupplier.id, formData);
@@ -87,8 +115,9 @@ const Suppliers = () => {
             setIsEditModalOpen(false);
             setCurrentSupplier(null);
             resetForm();
+            showAlert('Éxito', 'Proveedor actualizado correctamente', 'success');
         } catch (err) {
-            alert('Error al actualizar proveedor: ' + err.message);
+            showAlert('Error', err.message, 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -96,12 +125,12 @@ const Suppliers = () => {
 
     const handleDelete = async (supplier) => {
         if (!confirm(`¿Eliminar proveedor "${supplier.name}"?`)) return;
-
         try {
             await suppliersAPI.delete(supplier.id);
             await loadSuppliers();
+            showAlert('Éxito', 'Proveedor eliminado', 'success');
         } catch (err) {
-            alert('Error al eliminar proveedor: ' + err.message);
+            showAlert('Error', err.message, 'error');
         }
     };
 
@@ -117,108 +146,137 @@ const Suppliers = () => {
         setIsEditModalOpen(true);
     };
 
+    const openOrderModal = (supplier) => {
+        setCurrentSupplier(supplier);
+        setOrderItems([]);
+        setIsOrderModalOpen(true);
+    };
+
+    const addToOrder = () => {
+        if (!selectedProduct) return;
+        const product = products.find(p => p.id.toString() === selectedProduct);
+        if (!product) return;
+
+        setOrderItems([...orderItems, {
+            product_id: product.id,
+            name: product.name,
+            quantity: parseInt(orderQuantity),
+            cost_price: parseFloat(orderCost)
+        }]);
+        setOrderQuantity(1);
+        setOrderCost(0);
+    };
+
+    const removeFromOrder = (index) => {
+        const newItems = [...orderItems];
+        newItems.splice(index, 1);
+        setOrderItems(newItems);
+    };
+
+    const handleCreateOrder = async () => {
+        if (orderItems.length === 0) return showAlert('Atención', 'Agrega al menos un producto', 'error');
+        setIsSubmitting(true);
+        try {
+            const total = orderItems.reduce((sum, item) => sum + (item.quantity * item.cost_price), 0);
+            await purchasesAPI.create({
+                supplier_id: currentSupplier.id,
+                total: total,
+                items: orderItems
+            });
+            setIsOrderModalOpen(false);
+            loadPurchases();
+            showAlert('¡Solicitud Enviada!', 'El pedido está PENDIENTE. Confírmalo al recibir la carga.', 'success');
+        } catch (err) {
+            showAlert('Error', err.message, 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleReceiveOrder = async (purchaseId) => {
+        try {
+            await purchasesAPI.receive(purchaseId);
+            showAlert('¡Recibido!', 'Stock actualizado correctamente.', 'success');
+            loadPurchases();
+            loadProducts();
+        } catch (err) {
+            showAlert('Error', err.message, 'error');
+        }
+    };
+
     const filteredSuppliers = suppliers.filter(s =>
         s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.contact_person?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.category?.toLowerCase().includes(searchQuery.toLowerCase())
+        s.contact_person?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
         <Layout>
-            <div className="bg-mesh-gradient pt-12 pb-24 px-4 md:px-8 text-white relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="bg-mesh-gradient pt-8 pb-20 px-4 text-white relative">
+                <div className="flex flex-col gap-4">
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Proveedores</h2>
-                        <p className="text-blue-100 text-base md:text-lg opacity-90">Gestión de alianzas y suministros</p>
+                        <h2 className="text-3xl font-black mb-1">Proveedores</h2>
+                        <p className="text-blue-100 text-sm opacity-90">Gestión de suministros</p>
                     </div>
-                    <Button
-                        className="bg-white text-primary hover:bg-blue-50 font-bold px-6 h-12 shadow-lg rounded-xl active:scale-95 transition-all"
-                        onClick={() => {
-                            resetForm();
-                            setIsAddModalOpen(true);
-                        }}
-                    >
-                        <Plus className="mr-2 h-5 w-5" /> Nuevo Proveedor
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 text-white hover:bg-white/30"
+                            onClick={() => setIsPendingModalOpen(true)}
+                        >
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            Pendientes ({pendingPurchases.length})
+                        </Button>
+                        <Button
+                            className="flex-1 bg-white text-primary hover:bg-blue-50"
+                            onClick={() => { resetForm(); setIsAddModalOpen(true); }}
+                        >
+                            <Plus className="mr-2 h-4 w-4" /> Nuevo
+                        </Button>
+                    </div>
                 </div>
             </div>
 
-            <div className="px-4 md:px-8 -mt-16 relative z-20 pb-12">
-                <div className="mb-8 relative max-w-xl">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary w-5 h-5" />
-                    <Input
-                        className="pl-12 h-12 md:h-14 bg-white border-none shadow-xl rounded-2xl text-base md:text-lg"
-                        placeholder="Buscar por nombre, contacto o categoría..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+            <div className="px-4 -mt-12 relative z-20 pb-20">
+                <div className="mb-6">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-primary w-4 h-4" />
+                        <Input
+                            className="pl-10 h-12 bg-white border-none shadow-lg rounded-xl"
+                            placeholder="Buscar proveedor..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
                 </div>
 
                 {loading ? (
-                    <LoadingSpinner size="lg" text="Cargando proveedores..." className="py-20" />
-                ) : error ? (
-                    <ErrorMessage error={error} onRetry={loadSuppliers} className="py-20" />
-                ) : suppliers.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-2xl shadow-lg">
-                        <Building2 size={48} className="mx-auto mb-4 opacity-50" />
-                        <p className="text-muted-foreground mb-4">No hay proveedores registrados</p>
-                        <Button onClick={() => setIsAddModalOpen(true)}>
-                            <Plus className="mr-2" size={16} />
-                            Agregar Primer Proveedor
-                        </Button>
-                    </div>
+                    <LoadingSpinner />
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                        {filteredSuppliers.map((s, i) => (
-                            <Card key={s.id || i} className="border-none shadow-lg hover:shadow-2xl transition-all duration-300 group overflow-hidden relative">
-                                <div className="h-2 bg-primary group-hover:h-3 transition-all duration-300"></div>
-                                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 bg-white shadow text-blue-600 hover:bg-blue-50"
-                                        onClick={() => openEditModal(s)}
-                                    >
-                                        <Edit2 size={14} />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 bg-white shadow text-red-600 hover:bg-red-50"
-                                        onClick={() => handleDelete(s)}
-                                    >
-                                        <Trash2 size={14} />
-                                    </Button>
-                                </div>
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-xl md:text-2xl font-black text-gray-800 pr-20">{s.name}</CardTitle>
-                                    {s.contact_person && (
-                                        <p className="text-primary font-bold text-xs md:text-sm uppercase tracking-widest">{s.contact_person}</p>
-                                    )}
-                                    {s.category && (
-                                        <span className="inline-block mt-2 px-3 py-1 bg-blue-50 text-primary text-xs font-bold rounded-full">
-                                            {s.category}
-                                        </span>
-                                    )}
+                    <div className="grid gap-4">
+                        {filteredSuppliers.map((s) => (
+                            <Card key={s.id} className="border-none shadow-md overflow-hidden">
+                                <CardHeader className="pb-2 p-4">
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-lg font-bold text-gray-800">{s.name}</CardTitle>
+                                        <div className="flex gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => openEditModal(s)}><Edit2 size={16} /></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleDelete(s)}><Trash2 size={16} /></Button>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-uppercase font-bold text-primary tracking-wider">{s.contact_person}</p>
                                 </CardHeader>
-                                <CardContent className="space-y-3 md:space-y-4 pt-4">
-                                    {s.phone && (
-                                        <div className="flex items-center gap-3 text-gray-600">
-                                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary shrink-0">
-                                                <Phone size={16} />
-                                            </div>
-                                            <span className="font-semibold text-sm">{s.phone}</span>
-                                        </div>
-                                    )}
-                                    {s.email && (
-                                        <div className="flex items-center gap-3 text-gray-600">
-                                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary shrink-0">
-                                                <Mail size={16} />
-                                            </div>
-                                            <span className="font-semibold text-sm truncate">{s.email}</span>
-                                        </div>
-                                    )}
+                                <CardContent className="p-4 pt-0 space-y-3">
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                        <Phone size={14} className="text-primary" /> {s.phone || 'N/A'}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                        <Mail size={14} className="text-primary" /> {s.email || 'N/A'}
+                                    </div>
+                                    <Button
+                                        className="w-full mt-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+                                        onClick={() => openOrderModal(s)}
+                                    >
+                                        <ShoppingCart size={16} className="mr-2" /> Solicitar Pedido
+                                    </Button>
                                 </CardContent>
                             </Card>
                         ))}
@@ -226,134 +284,111 @@ const Suppliers = () => {
                 )}
             </div>
 
-            {/* Add Modal */}
+            {/* Add/Edit Modal */}
             <Modal
-                isOpen={isAddModalOpen}
-                onClose={() => {
-                    setIsAddModalOpen(false);
-                    resetForm();
-                }}
-                title="Nuevo Proveedor"
+                isOpen={isAddModalOpen || isEditModalOpen}
+                onClose={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }}
+                title={isEditModalOpen ? "Editar" : "Nuevo Proveedor"}
                 footer={
-                    <>
-                        <Button variant="outline" onClick={() => setIsAddModalOpen(false)} disabled={isSubmitting}>Cancelar</Button>
-                        <Button onClick={handleAdd} disabled={isSubmitting}>
-                            {isSubmitting ? 'Guardando...' : 'Guardar Proveedor'}
-                        </Button>
-                    </>
+                    <div className="flex gap-2 w-full">
+                        <Button variant="outline" className="flex-1" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }}>Cancelar</Button>
+                        <Button className="flex-1" onClick={isEditModalOpen ? handleEdit : handleAdd} disabled={isSubmitting}>Guardar</Button>
+                    </div>
+                }
+            >
+                <div className="space-y-3">
+                    <Input placeholder="Nombre Empresa *" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                    <Input placeholder="Contacto" value={formData.contact_person} onChange={e => setFormData({ ...formData, contact_person: e.target.value })} />
+                    <Input placeholder="Teléfono" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                    <Input placeholder="Email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                    <Input placeholder="Categoría" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+                </div>
+            </Modal>
+
+            {/* Order Modal */}
+            <Modal
+                isOpen={isOrderModalOpen}
+                onClose={() => setIsOrderModalOpen(false)}
+                title="Nueva Solicitud"
+                footer={
+                    <div className="flex gap-2 w-full">
+                        <Button variant="outline" className="flex-1" onClick={() => setIsOrderModalOpen(false)}>Cancelar</Button>
+                        <Button className="flex-1" onClick={handleCreateOrder} disabled={isSubmitting || orderItems.length === 0}>Confirmar</Button>
+                    </div>
                 }
             >
                 <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Empresa / Razón Social *</label>
-                        <Input
-                            placeholder="Ej. Distribuidora Farma"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Contacto Principal</label>
-                        <Input
-                            placeholder="Ej. Ana García"
-                            value={formData.contact_person}
-                            onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Categoría</label>
-                        <Input
-                            placeholder="Ej. Medicamentos"
-                            value={formData.category}
-                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Teléfono</label>
-                            <Input
-                                placeholder="+505 8888-8888"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            />
+                    <div className="bg-gray-50 p-3 rounded-lg space-y-3">
+                        <label className="text-xs font-bold uppercase text-gray-500">Agregar Producto</label>
+                        <select className="w-full p-2 text-sm border rounded-md" value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
+                            <option value="">Seleccionar...</option>
+                            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                        <div className="flex gap-2">
+                            <Input type="number" placeholder="Cant." min="1" className="flex-1" value={orderQuantity} onChange={e => setOrderQuantity(e.target.value)} />
+                            <Input type="number" placeholder="Costo" min="0" className="flex-1" value={orderCost} onChange={e => setOrderCost(e.target.value)} />
+                            <Button size="icon" onClick={addToOrder} disabled={!selectedProduct}><Plus size={18} /></Button>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Email</label>
-                            <Input
-                                type="email"
-                                placeholder="contacto@empresa.com"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            />
-                        </div>
+                    </div>
+
+                    <div className="max-h-40 overflow-y-auto border rounded-lg">
+                        {orderItems.length === 0 ? (
+                            <p className="text-center py-4 text-xs text-gray-400">Sin productos</p>
+                        ) : (
+                            orderItems.map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-center p-2 border-b text-sm">
+                                    <div>
+                                        <p className="font-medium">{item.name}</p>
+                                        <p className="text-xs text-gray-500">{item.quantity} x C$ {item.cost_price}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500" onClick={() => removeFromOrder(idx)}><Trash2 size={14} /></Button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <div className="text-right font-bold text-primary">
+                        Total: C$ {orderItems.reduce((sum, item) => sum + (item.quantity * item.cost_price), 0).toFixed(2)}
                     </div>
                 </div>
             </Modal>
 
-            {/* Edit Modal */}
+            {/* Pending Orders Modal */}
             <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    setCurrentSupplier(null);
-                    resetForm();
-                }}
-                title="Editar Proveedor"
-                footer={
-                    <>
-                        <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={isSubmitting}>Cancelar</Button>
-                        <Button onClick={handleEdit} disabled={isSubmitting}>
-                            {isSubmitting ? 'Guardando...' : 'Actualizar Proveedor'}
-                        </Button>
-                    </>
-                }
+                isOpen={isPendingModalOpen}
+                onClose={() => setIsPendingModalOpen(false)}
+                title="Pedidos Pendientes"
+                footer={<Button variant="outline" className="w-full" onClick={() => setIsPendingModalOpen(false)}>Cerrar</Button>}
             >
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Empresa / Razón Social *</label>
-                        <Input
-                            placeholder="Ej. Distribuidora Farma"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Contacto Principal</label>
-                        <Input
-                            placeholder="Ej. Ana García"
-                            value={formData.contact_person}
-                            onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-gray-700">Categoría</label>
-                        <Input
-                            placeholder="Ej. Medicamentos"
-                            value={formData.category}
-                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Teléfono</label>
-                            <Input
-                                placeholder="+505 8888-8888"
-                                value={formData.phone}
-                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-gray-700">Email</label>
-                            <Input
-                                type="email"
-                                placeholder="contacto@empresa.com"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            />
-                        </div>
-                    </div>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                    {pendingPurchases.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">No hay pedidos pendientes</p>
+                    ) : (
+                        pendingPurchases.map(p => (
+                            <div key={p.id} className="bg-white border rounded-xl p-3 shadow-sm">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 className="font-bold text-sm">{p.supplier_name}</h4>
+                                        <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">Pendiente</span>
+                                    </div>
+                                    <span className="font-bold text-primary">C$ {parseFloat(p.total).toFixed(2)}</span>
+                                </div>
+                                <p className="text-xs text-gray-400 mb-3">{new Date(p.timestamp).toLocaleString()}</p>
+                                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => handleReceiveOrder(p.id)}>
+                                    <CheckCircle size={14} className="mr-2" /> Confirmar Recepción
+                                </Button>
+                            </div>
+                        ))
+                    )}
                 </div>
             </Modal>
+
+            <AlertModal
+                isOpen={alertState.isOpen}
+                onClose={() => setAlertState({ ...alertState, isOpen: false })}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+            />
         </Layout>
     );
 };

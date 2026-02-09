@@ -1,10 +1,14 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 
 function createWindow() {
+    // Hide the application menu completely
+    Menu.setApplicationMenu(null);
+
     const win = new BrowserWindow({
         width: 1200,
         height: 800,
+        autoHideMenuBar: true, // Hides the menu bar
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
@@ -12,9 +16,7 @@ function createWindow() {
     });
 
     // Load the web app (in development, you might point this to localhost:5173)
-    // For now, let's load a simple message or the production build
     win.loadURL('http://localhost:5173');
-    // Or load a file: win.loadFile('index.html');
 }
 
 app.whenReady().then(() => {

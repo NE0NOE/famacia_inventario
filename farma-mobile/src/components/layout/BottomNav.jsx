@@ -8,7 +8,7 @@ const BottomNav = () => {
         { icon: LayoutDashboard, label: 'Inicio', path: '/dashboard' },
         { icon: ShoppingCart, label: 'POS', path: '/pos' },
         { icon: Package, label: 'Stock', path: '/inventory' },
-        { icon: Users, label: 'Clientes', path: '/clients' },
+        { icon: Truck, label: 'Proveedores', path: '/suppliers' },
         { icon: SettingsIcon, label: 'Ajustes', path: '/settings' },
     ];
 

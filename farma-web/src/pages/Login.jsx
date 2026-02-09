@@ -10,15 +10,37 @@ import logo from '@/assets/logo.webp';
 
 const Login = () => {
     const navigate = useNavigate();
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            navigate('/dashboard');
-        }, 1000);
+        setError('');
+
+        const username = e.target.username.value;
+        const password = e.target.password.value;
+
+        try {
+            const response = await fetch('http://localhost:3000/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('farma_user', JSON.stringify(data.user));
+                navigate('/dashboard');
+            } else {
+                setError(data.error || 'Error al iniciar sesión');
+            }
+        } catch (err) {
+            setError('Error de conexión con el servidor');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -48,12 +70,18 @@ const Login = () => {
                         <CardDescription className="text-blue-100 font-medium">Inicia sesión para continuar</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 pt-10">
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm font-bold text-center">
+                                {error}
+                            </div>
+                        )}
                         <form onSubmit={handleLogin} className="space-y-6">
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Usuario</label>
                                 <div className="relative">
                                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary h-5 w-5" />
                                     <Input
+                                        name="username"
                                         required
                                         className="h-14 pl-12 bg-slate-50 border-none shadow-inner rounded-2xl font-bold"
                                         placeholder="admin"
@@ -66,6 +94,7 @@ const Login = () => {
                                 <div className="relative">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary h-5 w-5" />
                                     <Input
+                                        name="password"
                                         required
                                         type="password"
                                         className="h-14 pl-12 bg-slate-50 border-none shadow-inner rounded-2xl font-bold"

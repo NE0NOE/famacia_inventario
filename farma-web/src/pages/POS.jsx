@@ -1,24 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, Package } from 'lucide-react';
-
+import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, Package, Loader2 } from 'lucide-react';
 import Modal from '@/components/ui/modal';
+import { productsAPI, salesAPI } from '@/services/api';
 
 const POS = () => {
     const [cart, setCart] = useState([]);
     const [search, setSearch] = useState('');
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('Efectivo');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [saleResult, setSaleResult] = useState(null);
+    const [lastTotal, setLastTotal] = useState(0);
 
-    // Sample data
-    const products = [
-        { id: 1, name: 'Paracetamol 500mg', price: 5.50, stock: 50 },
-        { id: 2, name: 'Amoxicilina 500mg', price: 12.00, stock: 20 },
-        { id: 3, name: 'Ibuprofeno 400mg', price: 8.25, stock: 35 },
-        { id: 4, name: 'Vitamina C 1g', price: 15.00, stock: 15 },
-    ];
+    // API data states
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // Fetch products from API
+    useEffect(() => {
+        loadProducts();
+    }, []);
+
+    const loadProducts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await productsAPI.getAll();
+            setProducts(data);
+        } catch (err) {
+            setError(err);
+            console.error('Error loading products:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const addToCart = (product) => {
         const existing = cart.find(item => item.id === product.id);
@@ -45,7 +65,43 @@ const POS = () => {
         }));
     };
 
-    const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const completeSale = async () => {
+        if (cart.length === 0) return;
+
+        setIsProcessing(true);
+        try {
+            const currentTotal = subtotal;
+            const saleData = {
+                subtotal: currentTotal,
+                total: currentTotal,
+                payment_method: paymentMethod,
+                items: cart.map(item => ({
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    price_at_sale: parseFloat(item.price)
+                }))
+            };
+
+            const result = await salesAPI.create(saleData);
+            setSaleResult(result);
+            setLastTotal(currentTotal);
+            setIsSuccessModalOpen(true);
+            setCart([]);
+            await loadProducts(); // Reload to update stock
+        } catch (err) {
+            alert('Error al procesar la venta: ' + (err.message || 'Error desconocido'));
+            console.error('Error creating sale:', err);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const subtotal = cart.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+
+    const filteredProducts = products.filter(product =>
+        product.name.toLowerCase().includes(search.toLowerCase()) ||
+        product.sku?.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <Layout>
@@ -65,22 +121,40 @@ const POS = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        {products.map(product => (
-                            <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none" onClick={() => addToCart(product)}>
-                                <div className="h-24 bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
-                                    <Package size={40} />
-                                </div>
-                                <CardContent className="p-4">
-                                    <h3 className="font-bold text-gray-800 text-lg mb-1">{product.name}</h3>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-primary font-bold text-xl">C$ {product.price.toFixed(2)}</span>
-                                        <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full">Stock: {product.stock}</span>
+                    {loading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                        </div>
+                    ) : error ? (
+                        <div className="text-center py-20 text-red-500">
+                            <p>Error al cargar productos</p>
+                            <Button onClick={loadProducts} className="mt-4">Reintentar</Button>
+                        </div>
+                    ) : filteredProducts.length === 0 ? (
+                        <div className="text-center py-20 text-muted-foreground">
+                            <Package size={48} className="mx-auto mb-4 opacity-50" />
+                            <p>No hay productos disponibles</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {filteredProducts.map(product => (
+                                <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none" onClick={() => addToCart(product)}>
+                                    <div className="h-24 bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
+                                        <Package size={40} />
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
+                                    <CardContent className="p-4">
+                                        <h3 className="font-bold text-gray-800 text-lg mb-1 truncate">{product.name}</h3>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-primary font-bold text-xl">C$ {parseFloat(product.price).toFixed(2)}</span>
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${product.stock < 20 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                Stock: {product.stock}
+                                            </span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Cart Summary */}
@@ -104,7 +178,7 @@ const POS = () => {
                                 <div key={item.id} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
                                     <div className="flex-1">
                                         <p className="font-bold text-gray-800">{item.name}</p>
-                                        <p className="text-primary font-bold">C$ {(item.price * item.quantity).toFixed(2)}</p>
+                                        <p className="text-primary font-bold">C$ {(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
                                         <div className="flex items-center gap-2 mt-2">
                                             <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, -1); }}>
                                                 <Minus size={14} />
@@ -134,22 +208,30 @@ const POS = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-3 mt-4">
-                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2">
-                                <CreditCard size={20} className="group-hover:text-primary transition-colors" />
+                            <Button
+                                variant={paymentMethod === 'Tarjeta' ? 'default' : 'outline'}
+                                className="flex flex-col h-16 gap-1 group border-2"
+                                onClick={() => setPaymentMethod('Tarjeta')}
+                            >
+                                <CreditCard size={20} className={paymentMethod === 'Tarjeta' ? 'text-white' : 'text-gray-600'} />
                                 <span className="text-xs uppercase font-bold">Tarjeta</span>
                             </Button>
-                            <Button variant="outline" className="flex flex-col h-16 gap-1 group border-2 border-primary bg-primary/5">
-                                <Banknote size={20} className="text-primary" />
-                                <span className="text-xs uppercase font-bold text-primary">Efectivo</span>
+                            <Button
+                                variant={paymentMethod === 'Efectivo' ? 'default' : 'outline'}
+                                className="flex flex-col h-16 gap-1 group border-2"
+                                onClick={() => setPaymentMethod('Efectivo')}
+                            >
+                                <Banknote size={20} className={paymentMethod === 'Efectivo' ? 'text-white' : 'text-gray-600'} />
+                                <span className="text-xs uppercase font-bold">Efectivo</span>
                             </Button>
                         </div>
 
                         <Button
                             className="w-full h-14 text-lg font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
-                            disabled={cart.length === 0}
-                            onClick={() => setIsSuccessModalOpen(true)}
+                            disabled={cart.length === 0 || isProcessing}
+                            onClick={completeSale}
                         >
-                            FINALIZAR VENTA
+                            {isProcessing ? 'Procesando...' : 'FINALIZAR VENTA'}
                         </Button>
                     </div>
                 </div>
@@ -159,14 +241,14 @@ const POS = () => {
                 isOpen={isSuccessModalOpen}
                 onClose={() => {
                     setIsSuccessModalOpen(false);
-                    setCart([]); // Clear cart on close
+                    setSaleResult(null);
                 }}
-                title="¡Venta Exitosa!"
+                title="¡Venta Completada!"
                 className="max-w-sm text-center"
                 footer={
                     <Button className="w-full font-bold" onClick={() => {
                         setIsSuccessModalOpen(false);
-                        setCart([]);
+                        setSaleResult(null);
                     }}>
                         Aceptar e Imprimir Ticket
                     </Button>
@@ -174,10 +256,12 @@ const POS = () => {
             >
                 <div className="py-6 flex flex-col items-center gap-4">
                     <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-2">
-                        <Package size={40} className="stroke-[3]" />
+                        <ShoppingCart size={40} className="stroke-[2]" />
                     </div>
-                    <h3 className="text-2xl font-black text-gray-800">C$ {subtotal.toFixed(2)}</h3>
-                    <p className="text-gray-500 font-medium">La transacción se ha procesado correctamente.</p>
+                    <p className="text-gray-500 font-medium">Venta #{saleResult?.id || '---'}</p>
+                    <h3 className="text-2xl font-black text-gray-800">C$ {lastTotal.toFixed(2)}</h3>
+                    <p className="text-gray-500">La transacción se ha procesado correctamente.</p>
+                    <p className="text-sm text-muted-foreground">Método: {paymentMethod}</p>
                 </div>
             </Modal>
         </Layout>

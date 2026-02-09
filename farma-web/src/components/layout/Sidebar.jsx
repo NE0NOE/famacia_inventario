@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, ShoppingCart, Package, Truck, Receipt, Users, Settings as SettingsIcon, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import logo from '@/assets/logo.webp';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
+    const navigate = useNavigate();
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: ShoppingCart, label: 'Punto de Venta', path: '/pos' },
@@ -16,6 +17,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         { icon: Users, label: 'Clientes', path: '/clients' },
         { icon: SettingsIcon, label: 'Configuración', path: '/settings' },
     ];
+
+    const handleLogout = () => {
+        localStorage.clear();
+        navigate('/login', { replace: true });
+    };
 
     return (
         <div className={cn(
@@ -71,10 +77,14 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             </nav>
 
             <div className="p-6">
-                <Button variant="ghost" className={cn(
-                    "w-full justify-start gap-3 text-blue-100 hover:text-white hover:bg-white/10 rounded-xl",
-                    isCollapsed && "justify-center px-0"
-                )}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                        "w-full justify-start gap-3 text-blue-100 hover:text-white hover:bg-white/10 rounded-xl",
+                        isCollapsed && "justify-center px-0"
+                    )}
+                    onClick={handleLogout}
+                >
                     <LogOut size={20} className="shrink-0" />
                     {!isCollapsed && <span className="animate-in fade-in duration-300">Cerrar Sesión</span>}
                 </Button>

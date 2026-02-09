@@ -71,10 +71,18 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             </nav>
 
             <div className="p-6">
-                <Button variant="ghost" className={cn(
-                    "w-full justify-start gap-3 text-blue-100 hover:text-white hover:bg-white/10 rounded-xl",
-                    isCollapsed && "justify-center px-0"
-                )}>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                        "w-full justify-start gap-3 text-blue-100 hover:text-white hover:bg-white/10 rounded-xl",
+                        isCollapsed && "justify-center px-0"
+                    )}
+                    onClick={() => {
+                        // Simple logout logic
+                        localStorage.clear();
+                        window.location.href = '/login';
+                    }}
+                >
                     <LogOut size={20} className="shrink-0" />
                     {!isCollapsed && <span className="animate-in fade-in duration-300">Cerrar Sesión</span>}
                 </Button>

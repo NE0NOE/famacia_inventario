@@ -5,23 +5,8 @@ const db = require('../db');
 // GET /api/suppliers - Fetch all suppliers
 router.get('/', async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM suppliers ORDER BY created_at DESC');
+        const result = await db.query('SELECT * FROM suppliers ORDER BY name');
         res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-// GET /api/suppliers/:id - Fetch a single supplier
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await db.query('SELECT * FROM suppliers WHERE id = $1', [id]);
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Supplier not found' });
-        }
-        res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -31,7 +16,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/suppliers - Create a new supplier
 router.post('/', async (req, res) => {
     try {
-        const { name, contact_person, phone, email, category } = req.body;
+        const { name, contact_person, phone, email, address, category } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: 'Name is required' });
@@ -48,7 +33,7 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/suppliers/:id - Update an existing supplier
+// PUT /api/suppliers/:id - Update a supplier
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -64,23 +49,6 @@ router.put('/:id', async (req, res) => {
         }
 
         res.json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
-
-// DELETE /api/suppliers/:id - Remove a supplier
-router.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const result = await db.query('DELETE FROM suppliers WHERE id = $1 RETURNING *', [id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Supplier not found' });
-        }
-
-        res.json({ message: 'Supplier deleted successfully' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal Server Error' });
