@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Farmacia Dulce Esperanza</string>
+    <string name="title_activity_main">Farmacia Dulce Esperanza</string>
+    <string name="package_name">com.farmacia.dulceesperanza</string>
+    <string name="custom_url_scheme">com.farmacia.dulceesperanza</string>
+</resources>

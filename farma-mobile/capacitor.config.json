@@ -1,0 +1,10 @@
+{
+    "appId": "com.farmacia.dulceesperanza",
+    "appName": "Farmacia Dulce Esperanza",
+    "webDir": "dist",
+    "bundledWebRuntime": false,
+    "server": {
+        "androidScheme": "http",
+        "cleartext": true
+    }
+}

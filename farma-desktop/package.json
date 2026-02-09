@@ -1,16 +1,37 @@
 {
   "name": "farma-desktop",
   "version": "1.0.0",
-  "description": "",
+  "description": "Farmacia Dulce Esperanza - Versión Desktop",
   "main": "main.js",
   "scripts": {
     "start": "electron . --no-sandbox",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder -mwl",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.farmacia.dulceesperanza",
+    "productName": "Farmacia Dulce Esperanza",
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office"
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^40.1.0"
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0"
   }
 }
