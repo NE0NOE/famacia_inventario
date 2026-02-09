@@ -2,7 +2,7 @@
 
 Bienvenido al repositorio oficial del proyecto **Farmacia Dulce Esperanza**. Este sistema es una solución completa de software diseñada para modernizar y optimizar la gestión operativa de una farmacia.
 
-## 🚀 Características Principales
+##  Características Principales
 
 El sistema está compuesto por tres módulos interconectados:
 
@@ -22,19 +22,13 @@ El sistema está compuesto por tres módulos interconectados:
     *   Base de datos PostgreSQL robusta y segura.
     *   Autenticación y manejo de sesiones.
 
-## 🛠️ Tecnologías Utilizadas
+##  Tecnologías Utilizadas
 
 *   **Frontend:** React, Vite, Tailwind CSS.
 *   **Backend:** Node.js, Express, PostgreSQL.
 *   **Móvil:** Capacitor (Android).
 *   **Escritorio:** Electron.
 
-## 📦 Instalación y Ejecución
-
-Consulta los documentos en la carpeta `documentacion` para guías detalladas:
-*   `GUIA_DESPLIEGUE.txt`: Cómo montar el servidor.
-*   `COMO_HACER_EJECUTABLES.txt`: Cómo generar el APK y la web.
-*   `INFORME_PROYECTO.txt`: Resumen del desarrollo.
 
 ---
 © 2026 Farmacia Dulce Esperanza. Todos los derechos reservados.
