@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Lock, User, Activity } from 'lucide-react';
+import { Lock, User, Activity, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import logo from '@/assets/logo.webp';
@@ -13,6 +13,7 @@ const Login = () => {
     const navigate = useNavigate();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -97,10 +98,17 @@ const Login = () => {
                                     <Input
                                         name="password"
                                         required
-                                        type="password"
-                                        className="h-14 pl-12 bg-slate-50 border-none shadow-inner rounded-2xl font-bold"
+                                        type={showPassword ? "text" : "password"}
+                                        className="h-14 pl-12 pr-12 bg-slate-50 border-none shadow-inner rounded-2xl font-bold"
                                         placeholder="••••••••"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    </button>
                                 </div>
                             </div>
 
@@ -109,7 +117,6 @@ const Login = () => {
                                     <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
                                     <span className="text-xs font-bold text-gray-500 group-hover:text-primary transition-colors">Recordarme</span>
                                 </label>
-                                <a href="#" className="text-xs font-bold text-primary hover:underline">¿Olvidaste tu contraseña?</a>
                             </div>
 
                             <Button

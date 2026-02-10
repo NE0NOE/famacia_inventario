@@ -84,5 +84,5 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Insert default admin user (password: admin123) if not exists
 INSERT INTO users (username, password_hash, role)
-VALUES ('admin', 'befa10fb6cc20f9c2d15907481ba0ad7dc20958742546e1180860549c47e8e668514101b0c007135e5e412a893663c631d8665977ba222384a377df4806a6828', 'admin')
+VALUES ('admin', '71a228f4d6209273dc00beab499c404f31d26c716019b312e295b0390f3a236f4371c33fd6269de74119d1c288b51009ac0257af826683136e5c8435bc597885', 'admin')
 ON CONFLICT (username) DO NOTHING;
