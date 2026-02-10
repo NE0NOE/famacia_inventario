@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
+import { API_BASE_URL } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +45,7 @@ const Settings = () => {
     const fetchUsers = async () => {
         setLoadingUsers(true);
         try {
-            const res = await fetch('http://localhost:3000/api/users');
+            const res = await fetch(`${API_BASE_URL}/users`);
             const data = await res.json();
             setUsers(data);
         } catch (error) {
@@ -57,7 +58,7 @@ const Settings = () => {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:3000/api/users', {
+            const res = await fetch(`${API_BASE_URL}/users`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newUser)
@@ -77,7 +78,7 @@ const Settings = () => {
     const handleDeleteUser = async (id) => {
         if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
         try {
-            await fetch(`http://localhost:3000/api/users/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/users/${id}`, { method: 'DELETE' });
             fetchUsers();
         } catch (error) {
             console.error(error);

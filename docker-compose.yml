@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: farma_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: farma_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./farma-backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - farma_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./farma-backend
+      dockerfile: Dockerfile
+    container_name: farma_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DB_USER: postgres
+      DB_HOST: postgres
+      DB_NAME: farma_db
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PORT: 5432
+      ALLOWED_ORIGINS: http://localhost,https://dulcesperanzafm.dpdns.org
+    depends_on:
+      - postgres
+    networks:
+      - farma_network
+
+  # Frontend Web
+  frontend:
+    build:
+      context: ./farma-web
+      dockerfile: Dockerfile
+    container_name: farma_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - farma_network
+
+volumes:
+  postgres_data:
+
+networks:
+  farma_network:
+    driver: bridge
