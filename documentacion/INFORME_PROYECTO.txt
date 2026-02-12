@@ -1,0 +1,670 @@
+================================================================================
+      INFORME FINAL DEL PROYECTO: FARMACIA DULCE ESPERANZA
+          Sistema de Gestión Integral Multiplataforma
+================================================================================
+
+Repositorio: https://github.com/NE0NOE/famacia_inventario
+Descargas:   https://github.com/NE0NOE/famacia_inventario/releases/tag/v1.0.0
+
+================================================================================
+                        TABLA DE CONTENIDOS
+================================================================================
+
+  1. Introducción
+  2. Metodología del Proyecto
+  3. Desarrollo del Proyecto
+  4. Conclusiones
+  5. Recomendaciones
+  6. Anexos
+
+================================================================================
+                        1. INTRODUCCIÓN
+================================================================================
+
+1.1 Descripción del Proyecto
+-----------------------------
+El proyecto "Farmacia Dulce Esperanza" es un sistema de gestión integral
+diseñado para modernizar y automatizar las operaciones diarias de una farmacia.
+La solución abarca el control de inventario, la gestión de ventas, la
+administración de clientes y proveedores, y la generación de facturas.
+
+El sistema fue desarrollado como una solución multiplataforma, es decir,
+funciona en tres plataformas distintas:
+
+  - WEB: Un panel administrativo accesible desde cualquier navegador.
+  - MÓVIL (ANDROID): Una aplicación nativa instalable en celulares/tablets.
+  - ESCRITORIO (LINUX): Una aplicación de escritorio instalable en computadoras.
+
+Las tres plataformas se conectan al mismo servidor backend (la misma base de
+datos), lo que garantiza que la información esté siempre sincronizada.
+
+
+1.2 Problema que resuelve
+--------------------------
+Muchas farmacias pequeñas y medianas aún manejan sus operaciones de forma
+manual (cuadernos, hojas de cálculo), lo que genera:
+
+  - Errores en el control de stock (productos vencidos, faltantes no detectados).
+  - Lentitud en el cobro de ventas (cálculos manuales de totales e impuestos).
+  - Falta de información sobre clientes frecuentes.
+  - Dificultad para llevar un registro de proveedores y compras.
+  - Imposibilidad de generar reportes de ventas para toma de decisiones.
+
+Este sistema resuelve todos estos problemas al digitalizar cada proceso.
+
+
+1.3 Objetivo General
+---------------------
+Desarrollar un sistema de gestión integral para farmacia que permita
+administrar inventario, ventas, clientes y proveedores desde múltiples
+plataformas (web, móvil y escritorio), mejorando la eficiencia operativa
+y la toma de decisiones del negocio.
+
+
+1.4 Objetivos Específicos
+---------------------------
+  - Implementar un módulo de inventario con alertas de stock bajo.
+  - Desarrollar un Punto de Venta (POS) ágil con cálculo automático.
+  - Crear un sistema de registro y fidelización de clientes (puntos).
+  - Integrar un módulo de proveedores y órdenes de compra.
+  - Generar facturas digitales y reportes de ventas.
+  - Desplegar el sistema en un servidor accesible por dominio propio.
+  - Generar compilados instalables (APK para Android, AppImage para Linux).
+
+
+1.5 Tecnologías Utilizadas
+----------------------------
+Se seleccionó un stack tecnológico moderno y robusto:
+
+  BACKEND (API del servidor):
+  ├── Node.js          → Plataforma de ejecución JavaScript del lado del servidor.
+  ├── Express.js       → Framework web para crear la API RESTful.
+  ├── PostgreSQL       → Base de datos relacional (almacena toda la info).
+  ├── Cors             → Middleware de seguridad para peticiones entre dominios.
+  └── Dotenv           → Manejo seguro de variables de entorno (contraseñas, etc).
+
+  FRONTEND WEB (Panel Administrativo):
+  ├── React.js         → Biblioteca para construir interfaces de usuario interactivas.
+  ├── Vite             → Empaquetador de módulos ultrarrápido (reemplaza a Webpack).
+  ├── Tailwind CSS     → Framework de estilos CSS basado en utilidades.
+  ├── Lucide React     → Biblioteca de iconos SVG consistente.
+  └── React Router     → Navegación SPA (Single Page Application) sin recargar página.
+
+  APLICACIÓN MÓVIL (Android):
+  ├── React.js + Vite  → Misma tecnología que la web (reutilización de código).
+  ├── Capacitor        → Puente que convierte la app web en app nativa Android.
+  └── Conexión al servidor vía dominio público (dulcesperanzafm.dpdns.org).
+
+  APLICACIÓN DE ESCRITORIO (Linux):
+  └── Electron         → Framework que permite ejecutar apps web como apps de escritorio.
+
+  DESPLIEGUE:
+  ├── Docker           → Contenedores para empaquetar y ejecutar la aplicación.
+  ├── Docker Compose   → Orquestador que levanta todos los servicios juntos.
+  ├── Nginx            → Servidor web que sirve el frontend en producción.
+  └── Cloudflare       → DNS y dominio personalizado (dulcesperanzafm.dpdns.org).
+
+
+================================================================================
+                    2. METODOLOGÍA DEL PROYECTO
+================================================================================
+
+2.1 Metodología de Desarrollo
+-------------------------------
+Se utilizó una metodología ágil incremental, donde el sistema se fue
+construyendo por módulos funcionales que se integraban paulatinamente.
+La dinámica de trabajo fue la siguiente:
+
+  1. Se definieron los requerimientos funcionales (qué debe hacer el sistema).
+  2. Se diseñó la base de datos con todas las tablas necesarias.
+  3. Se desarrolló el backend (API) primero, ya que es el núcleo del sistema.
+  4. Se construyó el frontend web conectándolo al backend.
+  5. Se adaptó el frontend para la versión móvil y escritorio.
+  6. Se realizaron pruebas de integración y corrección de errores.
+  7. Se desplegó en un servidor real con Docker.
+
+Cada módulo pasó por el ciclo: Diseño → Codificación → Prueba → Integración.
+
+
+2.2 Herramientas de Desarrollo
+---------------------------------
+  - Editor de código: Visual Studio Code (VS Code).
+  - Control de versiones: Git + GitHub.
+  - Base de datos: PostgreSQL (local en desarrollo, Docker en producción).
+  - Pruebas de API: Navegador / herramientas de red del navegador.
+  - Compilación móvil: Android Studio + Capacitor CLI.
+  - Compilación escritorio: Electron Builder.
+  - Despliegue: Docker + Docker Compose en servidor Ubuntu.
+
+
+2.3 Arquitectura del Sistema
+------------------------------
+El sistema sigue una arquitectura CLIENTE-SERVIDOR de 3 capas:
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │                     CAPA DE PRESENTACIÓN                    │
+  │  (Lo que ve el usuario)                                     │
+  │                                                             │
+  │  ┌──────────┐    ┌──────────┐    ┌──────────────┐           │
+  │  │ App Web  │    │ App Móvil│    │ App Escritorio│          │
+  │  │ (React)  │    │(Capacitor│    │  (Electron)   │          │
+  │  │          │    │ +React)  │    │               │          │
+  │  └────┬─────┘    └────┬─────┘    └──────┬───────┘          │
+  │       │               │                 │                   │
+  └───────┼───────────────┼─────────────────┼───────────────────┘
+          │               │                 │
+          ▼               ▼                 ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │                     CAPA DE NEGOCIO                         │
+  │  (Procesa las peticiones)                                   │
+  │                                                             │
+  │  ┌──────────────────────────────────┐                       │
+  │  │     API REST (Node.js + Express) │                       │
+  │  │                                  │                       │
+  │  │  Rutas:                          │                       │
+  │  │  ├── /api/auth      (login)      │                       │
+  │  │  ├── /api/products  (inventario) │                       │
+  │  │  ├── /api/clients   (clientes)   │                       │
+  │  │  ├── /api/suppliers (proveedores)│                       │
+  │  │  ├── /api/sales     (ventas)     │                       │
+  │  │  ├── /api/purchases (compras)    │                       │
+  │  │  └── /api/users     (usuarios)   │                       │
+  │  └──────────────────────────────────┘                       │
+  └─────────────────────────────────────────────────────────────┘
+          │
+          ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │                     CAPA DE DATOS                           │
+  │  (Almacena la información)                                  │
+  │                                                             │
+  │  ┌──────────────────────────────────┐                       │
+  │  │       PostgreSQL Database        │                       │
+  │  │                                  │                       │
+  │  │  Tablas:                         │                       │
+  │  │  ├── products       (productos)  │                       │
+  │  │  ├── clients        (clientes)   │                       │
+  │  │  ├── suppliers      (proveedores)│                       │
+  │  │  ├── sales          (ventas)     │                       │
+  │  │  ├── sale_items     (detalle)    │                       │
+  │  │  ├── purchases      (compras)    │                       │
+  │  │  ├── purchase_items (detalle)    │                       │
+  │  │  └── users          (usuarios)   │                       │
+  │  └──────────────────────────────────┘                       │
+  └─────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+                    3. DESARROLLO DEL PROYECTO
+================================================================================
+
+3.1 Cronograma de Desarrollo (3.5 Semanas)
+--------------------------------------------
+El proyecto se ejecutó en un periodo de 3 semanas y media (25 días hábiles),
+organizados en las siguientes fases:
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SEMANA 1: FUNDAMENTOS Y ARQUITECTURA (Días 1-7)                          ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Días 1-2: Configuración del entorno                                       ║
+║  ├── Instalación de Node.js, PostgreSQL y Git.                             ║
+║  ├── Creación del repositorio en GitHub.                                   ║
+║  ├── Inicialización de la estructura de carpetas:                          ║
+║  │     farma/                                                              ║
+║  │     ├── farma-backend/   (API del servidor)                             ║
+║  │     ├── farma-web/       (panel administrativo)                         ║
+║  │     ├── farma-mobile/    (app Android)                                  ║
+║  │     ├── farma-desktop/   (app escritorio)                               ║
+║  │     └── documentacion/   (informes y documentos)                        ║
+║  └── Configuración inicial de cada sub-proyecto con npm init.              ║
+║                                                                            ║
+║  Días 3-5: Diseño y construcción de la base de datos                       ║
+║  ├── Diseño del modelo entidad-relación (8 tablas).                        ║
+║  ├── Creación del archivo database.sql con:                                ║
+║  │     • products       → SKU, nombre, categoría, precio, stock.           ║
+║  │     • clients        → Cédula, nombre, teléfono, puntos de fidelidad.   ║
+║  │     • suppliers      → Nombre, contacto, teléfono, categoría.           ║
+║  │     • sales          → Cliente, subtotal, total, método de pago.        ║
+║  │     • sale_items     → Detalle de cada producto vendido.                ║
+║  │     • purchases      → Proveedor, total, estado (pendiente/recibido).   ║
+║  │     • purchase_items → Detalle de cada producto comprado.               ║
+║  │     • users          → Usuario, contraseña (hash), rol (admin/seller).  ║
+║  └── Implementación del servidor API básico con Express.                   ║
+║                                                                            ║
+║  Días 6-7: Estructura base del Frontend                                    ║
+║  ├── Creación del proyecto React+Vite para la web.                         ║
+║  ├── Configuración de Tailwind CSS para estilos.                           ║
+║  ├── Implementación del sistema de Login con autenticación.                ║
+║  └── Creación del layout principal (sidebar + contenido).                  ║
+║                                                                            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  SEMANA 2: MÓDULOS DE GESTIÓN (Días 8-14)                                  ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Días 8-10: Módulo de Inventario (Productos)                               ║
+║  ├── Backend: CRUD completo → POST, GET, PUT, DELETE en /api/products.     ║
+║  ├── Frontend: Tabla de productos con búsqueda y filtros.                  ║
+║  ├── Formularios de agregar/editar producto con validaciones.              ║
+║  └── Alertas visuales de stock bajo en el Dashboard.                       ║
+║                                                                            ║
+║  Días 11-12: Módulo de Proveedores                                         ║
+║  ├── Backend: CRUD en /api/suppliers.                                      ║
+║  ├── Frontend: Gestión de proveedores (agregar, editar, eliminar).         ║
+║  └── Módulo de Órdenes de Compra (/api/purchases).                        ║
+║                                                                            ║
+║  Días 13-14: Integración y pruebas                                         ║
+║  ├── Pruebas de integración Backend ↔ Frontend.                           ║
+║  ├── Ajustes de diseño UX en tablas y formularios.                         ║
+║  └── Corrección de errores encontrados.                                    ║
+║                                                                            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  SEMANA 3: VENTAS, CLIENTES Y FACTURACIÓN (Días 15-21)                     ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Días 15-17: Punto de Venta (POS)                                          ║
+║  ├── Interfaz ágil tipo caja registradora.                                 ║
+║  ├── Búsqueda rápida de productos por nombre o SKU.                        ║
+║  ├── Cálculo automático de subtotal, impuestos y total.                    ║
+║  └── Registro de venta con método de pago (efectivo/tarjeta).             ║
+║                                                                            ║
+║  Días 18-19: Módulo de Clientes                                            ║
+║  ├── Backend: CRUD en /api/clients con sistema de puntos.                  ║
+║  ├── Frontend: Registro, edición y consulta de clientes.                   ║
+║  └── Sistema de fidelidad: acumulación de puntos por compras.             ║
+║                                                                            ║
+║  Días 20-21: Facturación y Reportes                                        ║
+║  ├── Generación de facturas digitales por cada venta.                      ║
+║  ├── Historial de transacciones con filtros por fecha.                     ║
+║  └── Dashboard con estadísticas: ventas del día, productos más vendidos.   ║
+║                                                                            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  MEDIA SEMANA FINAL: MULTIPLATAFORMA Y DESPLIEGUE (Días 22-25)            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Día 22: Aplicación Móvil                                                  ║
+║  ├── Adaptación de la interfaz web a diseño mobile-first.                  ║
+║  ├── Configuración de Capacitor para convertir a app Android.              ║
+║  └── Generación del APK de prueba (app-debug.apk).                        ║
+║                                                                            ║
+║  Día 23: Aplicación de Escritorio                                          ║
+║  ├── Configuración de Electron para empaquetar como app de escritorio.     ║
+║  ├── Generación de AppImage (ejecutable portable Linux).                   ║
+║  └── Configuración de electron-builder para compilados.                    ║
+║                                                                            ║
+║  Día 24: Despliegue en Servidor                                            ║
+║  ├── Creación de Dockerfiles para backend y frontend.                      ║
+║  ├── Configuración de docker-compose.yml (3 servicios):                    ║
+║  │     • postgres   → Base de datos.                                       ║
+║  │     • backend    → API en puerto 3000.                                  ║
+║  │     • frontend   → Web con Nginx en puerto 80.                          ║
+║  ├── Configuración de Nginx como servidor web y proxy reverso de la API.   ║
+║  ├── Configuración de dominio con Cloudflare DNS.                          ║
+║  ├── Corrección de conectividad móvil (dominio público en vez de IP).      ║
+║  └── Ajustes de interfaz móvil (safe-area para navegación Android).        ║
+║  └── Despliegue exitoso en servidor Ubuntu (laptop-servidor).              ║
+║                                                                            ║
+║  Día 25: Documentación y Entrega                                           ║
+║  ├── Documentación técnica y guías de uso.                                 ║
+║  ├── Creación de Release en GitHub con los compilados:                     ║
+║  │     • APK (Android)                                                     ║
+║  │     • AppImage (Linux)                                                  ║
+║  ├── Actualización del README con enlaces de descarga.                     ║
+║  └── Preparación de la presentación final.                                 ║
+║                                                                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+3.2 Descripción Detallada de Cada Módulo
+------------------------------------------
+
+A. MÓDULO DE LOGIN / AUTENTICACIÓN
+   Archivo backend: routes/auth.js
+   Páginas: Login.jsx (web y móvil)
+
+   - El sistema requiere usuario y contraseña para acceder.
+   - Las contraseñas se almacenan como hash (cifradas) en la base de datos.
+   - Existen dos roles: "admin" (acceso total) y "seller" (acceso limitado).
+   - Al iniciar sesión, se guarda la sesión del usuario.
+   - Credenciales por defecto: usuario "admin", contraseña "admin123".
+
+B. MÓDULO DE INVENTARIO (PRODUCTOS)
+   Archivo backend: routes/products.js
+   Páginas: Inventory.jsx (web y móvil)
+
+   - Permite agregar, editar, eliminar y buscar productos.
+   - Cada producto tiene: SKU (código único), nombre, categoría, precio, stock.
+   - El stock se actualiza automáticamente al registrar ventas o compras.
+   - Se muestran alertas cuando el stock de un producto está bajo.
+
+C. MÓDULO DE PROVEEDORES
+   Archivo backend: routes/suppliers.js
+   Páginas: Suppliers.jsx (web y móvil)
+
+   - Registro completo de proveedores con datos de contacto.
+   - Gestión de órdenes de compra hacia proveedores.
+   - Cada orden de compra puede tener múltiples productos.
+   - Al recibir una orden, el stock se actualiza automáticamente.
+
+D. MÓDULO DE VENTAS / PUNTO DE VENTA (POS)
+   Archivo backend: routes/sales.js
+   Páginas: POS.jsx (web y móvil)
+
+   - Interfaz de caja estilo punto de venta profesional.
+   - Se buscan productos y se agregan al carrito de venta.
+   - Cálculo automático de subtotal, impuestos y total.
+   - Métodos de pago: Efectivo y Tarjeta.
+   - Al confirmar la venta, se descuenta del stock automáticamente.
+
+E. MÓDULO DE CLIENTES
+   Archivo backend: routes/clients.js
+   Páginas: Clients.jsx (web y móvil)
+
+   - Registro de clientes con cédula/RUC, nombre, teléfono, email.
+   - Sistema de puntos de fidelidad (se acumulan puntos por cada compra).
+   - Registro de última visita del cliente.
+   - Búsqueda rápida de clientes por nombre o cédula.
+
+F. MÓDULO DE FACTURACIÓN
+   Páginas: Invoicing.jsx (web y móvil)
+
+   - Generación de facturas digitales por cada venta realizada.
+   - Historial completo de transacciones con filtros.
+   - Detalle de cada factura: productos, cantidades, precios, totales.
+
+G. MÓDULO DE DASHBOARD (PANEL PRINCIPAL)
+   Páginas: Dashboard.jsx (web y móvil)
+
+   - Vista general con estadísticas del negocio.
+   - Ventas del día, semana y mes.
+   - Productos con stock bajo (alertas).
+   - Resumen de clientes y proveedores.
+
+H. MÓDULO DE CONFIGURACIÓN
+   Páginas: Settings.jsx (web y móvil)
+
+   - Gestión de usuarios del sistema.
+   - Configuraciones generales del sistema.
+
+
+3.3 Base de Datos (PostgreSQL)
+---------------------------------
+El sistema utiliza PostgreSQL como sistema de gestión de base de datos.
+El esquema tiene 8 tablas con las siguientes relaciones:
+
+  products ←──── sale_items ────→ sales ────→ clients
+  products ←──── purchase_items ─→ purchases ─→ suppliers
+  users (independiente)
+
+  Relaciones:
+  - Una VENTA (sales) puede tener muchos ITEMS (sale_items).         [1:N]
+  - Cada ITEM de venta referencia a un PRODUCTO (products).          [N:1]
+  - Una VENTA puede estar asociada a un CLIENTE (clients).           [N:1]
+  - Una COMPRA (purchases) puede tener muchos ITEMS (purchase_items). [1:N]
+  - Cada ITEM de compra referencia a un PRODUCTO (products).         [N:1]
+  - Una COMPRA está asociada a un PROVEEDOR (suppliers).             [N:1]
+
+
+3.4 Estructura de Archivos del Proyecto
+-----------------------------------------
+
+  farma/                              ← Raíz del proyecto
+  │
+  ├── docker-compose.yml              ← Orquestador Docker (3 servicios)
+  ├── README.md                       ← Documentación principal + descargas
+  │
+  ├── farma-backend/                  ← API del servidor
+  │   ├── index.js                    ← Punto de entrada del servidor
+  │   ├── package.json                ← Dependencias del backend
+  │   ├── database.sql                ← Esquema de la base de datos
+  │   ├── Dockerfile                  ← Contenedor Docker del backend
+  │   ├── .env                        ← Variables de entorno (contraseñas)
+  │   └── routes/                     ← Rutas de la API
+  │       ├── auth.js                 ← Autenticación (login)
+  │       ├── products.js             ← CRUD de productos
+  │       ├── clients.js              ← CRUD de clientes
+  │       ├── suppliers.js            ← CRUD de proveedores
+  │       ├── sales.js                ← Registro de ventas
+  │       ├── purchases.js            ← Órdenes de compra
+  │       └── users.js                ← Gestión de usuarios
+  │
+  ├── farma-web/                      ← Panel Administrativo Web
+  │   ├── package.json                ← Dependencias (React, Vite, Tailwind)
+  │   ├── Dockerfile                  ← Contenedor Docker del frontend
+  │   ├── nginx.conf                  ← Configuración del servidor Nginx
+  │   └── src/pages/                  ← Páginas de la aplicación
+  │       ├── Login.jsx               ← Página de inicio de sesión
+  │       ├── Dashboard.jsx           ← Panel principal con estadísticas
+  │       ├── Inventory.jsx           ← Gestión de inventario
+  │       ├── POS.jsx                 ← Punto de Venta
+  │       ├── Clients.jsx             ← Gestión de clientes
+  │       ├── Suppliers.jsx           ← Gestión de proveedores
+  │       ├── Invoicing.jsx           ← Facturación
+  │       └── Settings.jsx            ← Configuración
+  │
+  ├── farma-mobile/                   ← App Móvil Android
+  │   ├── package.json                ← Dependencias (React + Capacitor)
+  │   ├── capacitor.config.json       ← Configuración de Capacitor
+  │   ├── android/                    ← Proyecto Android nativo (generado)
+  │   └── src/pages/                  ← Páginas (misma estructura que web)
+  │       ├── Login.jsx
+  │       ├── Dashboard.jsx
+  │       ├── Inventory.jsx
+  │       ├── POS.jsx
+  │       ├── Clients.jsx
+  │       ├── Suppliers.jsx
+  │       ├── Invoicing.jsx
+  │       └── Settings.jsx
+  │
+  ├── farma-desktop/                  ← App de Escritorio
+  │   ├── main.js                     ← Punto de entrada de Electron
+  │   ├── package.json                ← Config de electron-builder
+  │   └── dist/                       ← Compilados generados
+  │       └── Farmacia Dulce Esperanza-1.0.0.AppImage
+  │
+  └── documentacion/                  ← Documentación del proyecto
+      └── INFORME_PROYECTO.txt        ← Este archivo
+
+
+3.5 Despliegue en Producción
+-------------------------------
+El sistema se desplegó en un servidor real (una laptop con Ubuntu)
+usando Docker. La configuración incluye:
+
+  Docker Compose levanta 3 contenedores:
+  ┌─────────────────────────────────────────────┐
+  │  1. farma_postgres  (Puerto 5432)           │
+  │     → Base de datos PostgreSQL 15           │
+  │     → Volumen persistente para los datos    │
+  │                                             │
+  │  2. farma_backend   (Puerto 3000)           │
+  │     → API Node.js/Express                   │
+  │     → Se conecta a PostgreSQL               │
+  │                                             │
+  │  3. farma_frontend  (Puerto 80)             │
+  │     → Frontend React compilado              │
+  │     → Servido por Nginx                     │
+  └─────────────────────────────────────────────┘
+
+  Comando para levantar todo:
+    docker compose up --build -d
+
+  Dominio configurado: dulcesperanzafm.dpdns.org (Cloudflare DNS)
+
+
+3.6 Compilados Generados
+--------------------------
+Se generaron dos tipos de compilados distribuibles:
+
+  A. APK para Android (app-debug.apk):
+     - Se genera con: npm run build → npx cap sync android → Gradle.
+     - Se instala directamente en dispositivos Android.
+     - Requiere Android 7.0 o superior.
+     - Se conecta al backend vía dominio público (no requiere misma WiFi).
+
+  B. AppImage para Linux (Farmacia Dulce Esperanza-1.0.0.AppImage):
+     - Se genera con: npm run build:linux (Electron Builder).
+     - Es un ejecutable portable (no requiere instalación).
+     - Solo se necesita dar permisos de ejecución y hacer doble clic.
+
+  Ambos están disponibles para descarga en:
+  https://github.com/NE0NOE/famacia_inventario/releases/tag/v1.0.0
+
+
+================================================================================
+                         4. CONCLUSIONES
+================================================================================
+
+  1. Se logró desarrollar exitosamente un sistema integral multiplataforma
+     (web, móvil y escritorio) que cubre todas las necesidades operativas
+     de una farmacia: inventario, ventas, clientes y proveedores.
+
+  2. La elección de tecnologías como React, Node.js y PostgreSQL permitió
+     crear un sistema moderno, escalable y mantenible, reutilizando código
+     entre las distintas plataformas.
+
+  3. La implementación de Docker para el despliegue simplificó enormemente
+     la puesta en producción, permitiendo levantar todo el sistema con un
+     solo comando (docker compose up --build).
+
+  4. El uso de Capacitor y Electron permitió generar aplicaciones nativas
+     a partir del mismo código base web, reduciendo significativamente el
+     tiempo y costo de desarrollo.
+
+  5. La arquitectura cliente-servidor con API REST garantiza que todas las
+     plataformas trabajen con los mismos datos, manteniendo la consistencia
+     de la información en todo momento.
+
+  6. El sistema de puntos de fidelidad para clientes agrega valor comercial
+     al negocio, incentivando la recurrencia de compra.
+
+  7. El proyecto se completó dentro del cronograma establecido de 3 semanas
+     y media, cumpliendo con todos los requerimientos funcionales planteados.
+
+
+================================================================================
+                       5. RECOMENDACIONES
+================================================================================
+
+  1. SEGURIDAD: Implementar HTTPS (certificado SSL) en el servidor de
+     producción para cifrar la comunicación entre clientes y servidor.
+     Cloudflare ofrece certificados SSL gratuitos.
+
+  2. RESPALDOS: Configurar respaldos automáticos de la base de datos
+     PostgreSQL (pg_dump) programados diariamente para evitar pérdida
+     de datos.
+
+  3. MEJORAS FUTURAS:
+     - Integrar un módulo de reportes avanzados con gráficas interactivas.
+     - Agregar notificaciones push en la app móvil para alertas de stock.
+     - Implementar un módulo de cuentas por cobrar y cuentas por pagar.
+     - Añadir un escáner de código de barras en la app móvil.
+     - Integrar pasarela de pago en línea para ventas por delivery.
+
+  4. MANTENIMIENTO: Actualizar periódicamente las dependencias del proyecto
+     (npm update) para mantener la seguridad y compatibilidad.
+
+  5. CAPACITACIÓN: Capacitar al personal de la farmacia en el uso del
+     sistema, especialmente en los módulos de POS y gestión de inventario.
+
+  6. ESCALABILIDAD: Si el negocio crece, se recomienda migrar el servidor
+     a una plataforma cloud (AWS, DigitalOcean, Railway) para mayor
+     disponibilidad y rendimiento.
+
+
+================================================================================
+                          6. ANEXOS
+================================================================================
+
+ANEXO A: COMANDOS DE EJECUCIÓN DEL PROYECTO
+---------------------------------------------
+Para ejecutar el proyecto en modo desarrollo, se necesitan 2 terminales:
+
+  Terminal 1 - Backend:
+    cd farma-backend
+    npm install
+    npm run dev
+
+  Terminal 2 - Frontend Web:
+    cd farma-web
+    npm install
+    npm run dev
+
+  Acceder en el navegador: http://localhost:5173
+  Credenciales: admin / admin123
+
+
+ANEXO B: COMANDOS DE COMPILACIÓN
+----------------------------------
+
+  Compilar Frontend Web (archivos estáticos):
+    cd farma-web
+    npm run build
+    # Salida: farma-web/dist/
+
+  Compilar APK Android:
+    cd farma-mobile
+    npm run build
+    npx cap sync android
+    cd android
+    ./gradlew assembleDebug
+    # Salida: android/app/build/outputs/apk/debug/app-debug.apk
+
+  Compilar Escritorio Linux:
+    cd farma-desktop
+    npm install
+    npm run build:linux
+    # Salida: farma-desktop/dist/*.AppImage
+
+
+ANEXO C: DESPLIEGUE CON DOCKER
+---------------------------------
+
+  Levantar todos los servicios:
+    cd farma     (carpeta raíz)
+    docker compose up --build -d
+
+  Ver logs:
+    docker compose logs -f
+
+  Detener servicios:
+    docker compose down
+
+  Verificar que los contenedores estén corriendo:
+    docker ps
+
+
+ANEXO D: VARIABLES DE ENTORNO REQUERIDAS
+-------------------------------------------
+El proyecto requiere las siguientes variables de entorno:
+
+  Para el backend (.env en farma-backend/):
+    PORT=3000
+    DB_USER=postgres
+    DB_HOST=localhost        (o "postgres" si usa Docker)
+    DB_NAME=farma_db
+    DB_PASSWORD=tu_contraseña
+    DB_PORT=5432
+
+  Para Docker (.env en la raíz farma/):
+    DB_PASSWORD=tu_contraseña
+
+  Para la app móvil (.env en farma-mobile/):
+    VITE_API_BASE_URL=http://dulcesperanzafm.dpdns.org/api
+    (Esta variable apunta al dominio público. Nginx redirige /api/ al backend.)
+    (Alternativa para desarrollo local: http://localhost:3000/api)
+
+
+ANEXO E: ENLACE AL REPOSITORIO Y DESCARGAS
+--------------------------------------------
+  Repositorio GitHub: https://github.com/NE0NOE/famacia_inventario
+  Release v1.0.0:     https://github.com/NE0NOE/famacia_inventario/releases/tag/v1.0.0
+
+  Descargas directas:
+  - APK Android:  https://github.com/NE0NOE/famacia_inventario/releases/latest/download/app-debug.apk
+  - AppImage:     https://github.com/NE0NOE/famacia_inventario/releases/latest/download/Farmacia.Dulce.Esperanza-1.0.0.AppImage
+
+
+================================================================================
+                    FIN DEL INFORME
+    Farmacia Dulce Esperanza © 2026 - Todos los derechos reservados.
+================================================================================
