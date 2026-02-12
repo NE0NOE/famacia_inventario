@@ -22,6 +22,16 @@ El sistema está compuesto por tres módulos interconectados:
     *   Base de datos PostgreSQL robusta y segura.
     *   Autenticación y manejo de sesiones.
 
+## 📥 Descargas
+
+| Plataforma | Descarga |
+|---|---|
+| 📱 **Android (APK)** | [⬇️ Descargar APK](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/app-debug.apk) |
+| 🐧 **Linux (AppImage)** | [⬇️ Descargar AppImage](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/Farmacia.Dulce.Esperanza-1.0.0.AppImage) |
+| 🌐 **Web** | Despliegue mediante Docker (`docker compose up --build`) |
+
+> **Nota:** Para instalar el APK en Android, debes habilitar la instalación de "Fuentes desconocidas" en la configuración de tu dispositivo.
+
 ##  Tecnologías Utilizadas
 
 *   **Frontend:** React, Vite, Tailwind CSS.
