@@ -13,8 +13,9 @@ const BottomNav = () => {
     ];
 
     return (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
-            <nav className="flex items-center justify-around px-2 py-2 safe-area-inset-bottom">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50"
+            style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}>
+            <nav className="flex items-center justify-around px-2 py-2">
                 {menuItems.map((item, index) => (
                     <NavLink
                         key={index}

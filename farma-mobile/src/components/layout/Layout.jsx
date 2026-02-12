@@ -11,7 +11,7 @@ const Layout = ({ children }) => {
             <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
             <BottomNav />
             <main className={cn(
-                "min-h-screen bg-transparent transition-all duration-300 pb-20 md:pb-0",
+                "min-h-screen bg-transparent transition-all duration-300 pb-28 md:pb-0",
                 isCollapsed ? "md:pl-20" : "md:pl-64"
             )}>
                 {children}
