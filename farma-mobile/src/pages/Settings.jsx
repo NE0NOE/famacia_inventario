@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Settings as SettingsIcon, Bell, Lock, Globe, AlertCircle, Package } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
 const Settings = () => {
     // Settings State
     const [settings, setSettings] = useState({
@@ -44,7 +46,7 @@ const Settings = () => {
     const fetchUsers = async () => {
         setLoadingUsers(true);
         try {
-            const res = await fetch('http://localhost:3000/api/users');
+            const res = await fetch(`${API_BASE_URL}/users`);
             const data = await res.json();
             setUsers(data);
         } catch (error) {
@@ -57,7 +59,7 @@ const Settings = () => {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:3000/api/users', {
+            const res = await fetch(`${API_BASE_URL}/users`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newUser)
@@ -77,7 +79,7 @@ const Settings = () => {
     const handleDeleteUser = async (id) => {
         if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
         try {
-            await fetch(`http://localhost:3000/api/users/${id}`, { method: 'DELETE' });
+            await fetch(`${API_BASE_URL}/users/${id}`, { method: 'DELETE' });
             fetchUsers();
         } catch (error) {
             console.error(error);
