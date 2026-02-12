@@ -16,7 +16,7 @@ function createWindow() {
     });
 
     // Load the web app (in development, you might point this to localhost:5173)
-    win.loadURL('http://localhost:5173');
+    win.loadURL('https://dulcesperanzafm.dpdns.org');
 }
 
 app.whenReady().then(() => {
