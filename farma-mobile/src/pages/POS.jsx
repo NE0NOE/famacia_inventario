@@ -238,7 +238,7 @@ const POS = () => {
             {/* Floating Cart Button - Mobile */}
             <button
                 onClick={() => setIsCartOpen(true)}
-                className="md:hidden fixed bottom-20 right-4 bg-primary text-white p-4 rounded-full shadow-lg z-40 flex items-center gap-2"
+                className="md:hidden fixed bottom-32 right-4 bg-primary text-white p-4 rounded-full shadow-lg z-40 flex items-center gap-2"
             >
                 <ShoppingCart size={24} />
                 {cart.length > 0 && (
