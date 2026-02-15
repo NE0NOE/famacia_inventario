@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS suppliers (
     phone VARCHAR(20),
     email VARCHAR(255),
     category VARCHAR(100),
+    address TEXT,
+    status VARCHAR(20) DEFAULT 'active',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -3,16 +3,18 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Phone, Mail, MapPin, ExternalLink, ShoppingCart, Loader2, Trash2, Edit2, CheckCircle } from 'lucide-react';
+import { Search, Plus, Phone, Mail, MapPin, ExternalLink, ShoppingCart, Loader2, Trash2, Edit2, CheckCircle, Power, PowerOff, Filter } from 'lucide-react';
 import Modal from '@/components/ui/modal';
 import AlertModal from '@/components/ui/AlertModal';
 import { suppliersAPI, productsAPI, purchasesAPI } from '@/services/api';
+import { validateRequired, validatePhone } from '@/lib/validators';
 
 const Suppliers = () => {
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // all, active, inactive
 
     // Modal States
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -25,6 +27,7 @@ const Suppliers = () => {
 
     // Alert State
     const [alertState, setAlertState] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+    const [formErrors, setFormErrors] = useState({});
 
     const showAlert = (title, message, type = 'info') => {
         setAlertState({ isOpen: true, title, message, type });
@@ -78,8 +81,22 @@ const Suppliers = () => {
         }
     };
 
+    const validateSupplierForm = () => {
+        const errors = {};
+        const nameResult = validateRequired(supplierForm.name, 'El nombre');
+        if (!nameResult.valid) errors.name = nameResult.message;
+
+        if (supplierForm.phone) {
+            const phoneResult = validatePhone(supplierForm.phone);
+            if (!phoneResult.valid) errors.phone = phoneResult.message;
+        }
+
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleSaveSupplier = async () => {
-        if (!supplierForm.name) return showAlert('Campo Requerido', 'El nombre de la empresa es obligatorio', 'error');
+        if (!validateSupplierForm()) return;
         setIsSubmitting(true);
         try {
             if (selectedSupplier) {
@@ -99,9 +116,22 @@ const Suppliers = () => {
         }
     };
 
+    const handleToggleStatus = async (supplier) => {
+        const action = supplier.status === 'active' ? 'desactivar' : 'activar';
+        if (!confirm(`¿Seguro que deseas ${action} a ${supplier.name}?`)) return;
+        try {
+            await suppliersAPI.toggleStatus(supplier.id);
+            await loadSuppliers();
+            showAlert('Éxito', `Proveedor ${action === 'desactivar' ? 'desactivado' : 'activado'} correctamente`, 'success');
+        } catch (err) {
+            showAlert('Error', err.message, 'error');
+        }
+    };
+
     const openEditModal = (supplier) => {
         setSelectedSupplier(supplier);
         setSupplierForm(supplier);
+        setFormErrors({});
         setIsEditModalOpen(true);
     };
 
@@ -158,8 +188,8 @@ const Suppliers = () => {
         try {
             await purchasesAPI.receive(purchaseId);
             showAlert('¡Mercadería Recibida!', 'El stock se ha actualizado correctamente.', 'success');
-            loadPurchases(); // Refresh list
-            loadProducts(); // Refresh product stock (if we displayed it)
+            loadPurchases();
+            loadProducts();
         } catch (err) {
             showAlert('Error al Recepcionar', err.message, 'error');
         }
@@ -168,12 +198,27 @@ const Suppliers = () => {
     const resetForm = () => {
         setSupplierForm({ name: '', contact_person: '', phone: '', email: '', address: '', category: '' });
         setSelectedSupplier(null);
+        setFormErrors({});
     };
 
-    const filteredSuppliers = suppliers.filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.contact_person && s.contact_person.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const filteredSuppliers = suppliers
+        .filter(s =>
+            s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (s.contact_person && s.contact_person.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        .filter(s => {
+            if (statusFilter === 'active') return s.status === 'active' || !s.status;
+            if (statusFilter === 'inactive') return s.status === 'inactive';
+            return true;
+        });
+
+    const activeCount = suppliers.filter(s => s.status === 'active' || !s.status).length;
+    const inactiveCount = suppliers.filter(s => s.status === 'inactive').length;
+
+    const renderFieldError = (field) => {
+        if (!formErrors[field]) return null;
+        return <p className="text-red-500 text-xs mt-1 font-medium">{formErrors[field]}</p>;
+    };
 
     return (
         <Layout>
@@ -202,65 +247,119 @@ const Suppliers = () => {
             </div>
 
             <div className="px-8 -mt-16 relative z-20 pb-12">
-                <div className="mb-8 relative max-w-xl">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary w-5 h-5" />
-                    <Input
-                        className="pl-12 h-14 bg-white border-none shadow-xl rounded-2xl text-lg"
-                        placeholder="Buscar por nombre, contacto o ubicación..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                <div className="mb-8 flex gap-4 items-center">
+                    <div className="relative max-w-xl flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary w-5 h-5" />
+                        <Input
+                            className="pl-12 h-14 bg-white border-none shadow-xl rounded-2xl text-lg"
+                            placeholder="Buscar por nombre, contacto o ubicación..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex bg-white rounded-xl shadow-xl overflow-hidden h-14">
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className={`px-5 text-sm font-bold transition-all ${statusFilter === 'all' ? 'bg-primary text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            Todos ({suppliers.length})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('active')}
+                            className={`px-5 text-sm font-bold transition-all ${statusFilter === 'active' ? 'bg-green-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            Activos ({activeCount})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('inactive')}
+                            className={`px-5 text-sm font-bold transition-all ${statusFilter === 'inactive' ? 'bg-red-600 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                            Inactivos ({inactiveCount})
+                        </button>
+                    </div>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary w-12 h-12" /></div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredSuppliers.map((s) => (
-                            <Card key={s.id} className="border-none shadow-lg hover:shadow-2xl transition-all duration-300 group overflow-hidden">
-                                <div className="h-2 bg-primary group-hover:h-3 transition-all duration-300"></div>
-                                <CardHeader className="pb-2">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-2xl font-black text-gray-800">{s.name}</CardTitle>
-                                        <Button variant="ghost" size="icon" className="text-primary hover:bg-blue-50" onClick={() => openEditModal(s)}>
-                                            <Edit2 size={18} />
-                                        </Button>
-                                    </div>
-                                    <p className="text-primary font-bold text-sm uppercase tracking-widest">{s.contact_person || 'Sin contacto'}</p>
-                                </CardHeader>
-                                <CardContent className="space-y-4 pt-4">
-                                    <div className="flex items-center gap-3 text-gray-600">
-                                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary">
-                                            <Phone size={16} />
+                        {filteredSuppliers.map((s) => {
+                            const isInactive = s.status === 'inactive';
+                            return (
+                                <Card
+                                    key={s.id}
+                                    className={`border-none shadow-lg hover:shadow-2xl transition-all duration-300 group overflow-hidden ${isInactive ? 'opacity-60' : ''}`}
+                                >
+                                    <div className={`h-2 ${isInactive ? 'bg-red-400' : 'bg-primary'} group-hover:h-3 transition-all duration-300`}></div>
+                                    <CardHeader className="pb-2">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-3">
+                                                <CardTitle className="text-2xl font-black text-gray-800">{s.name}</CardTitle>
+                                                {isInactive && (
+                                                    <span className="bg-red-100 text-red-600 text-[10px] font-black uppercase px-2 py-0.5 rounded-full tracking-wide">
+                                                        Inactivo
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-primary hover:bg-blue-50"
+                                                    onClick={() => openEditModal(s)}
+                                                    title="Editar"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className={isInactive ? 'text-green-600 hover:bg-green-50' : 'text-red-500 hover:bg-red-50'}
+                                                    onClick={() => handleToggleStatus(s)}
+                                                    title={isInactive ? 'Activar' : 'Desactivar'}
+                                                >
+                                                    {isInactive ? <Power size={18} /> : <PowerOff size={18} />}
+                                                </Button>
+                                            </div>
                                         </div>
-                                        <span className="font-semibold">{s.phone || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3 text-gray-600">
-                                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary">
-                                            <Mail size={16} />
+                                        <p className="text-primary font-bold text-sm uppercase tracking-widest">{s.contact_person || 'Sin contacto'}</p>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4 pt-4">
+                                        <div className="flex items-center gap-3 text-gray-600">
+                                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary">
+                                                <Phone size={16} />
+                                            </div>
+                                            <span className="font-semibold">{s.phone || 'N/A'}</span>
                                         </div>
-                                        <span className="font-semibold truncate">{s.email || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-start gap-3 text-gray-600">
-                                        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary mt-1">
-                                            <MapPin size={16} />
+                                        <div className="flex items-center gap-3 text-gray-600">
+                                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary">
+                                                <Mail size={16} />
+                                            </div>
+                                            <span className="font-semibold truncate">{s.email || 'N/A'}</span>
                                         </div>
-                                        <span className="text-sm font-medium">{s.address || 'N/A'}</span>
-                                    </div>
+                                        <div className="flex items-start gap-3 text-gray-600">
+                                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary mt-1">
+                                                <MapPin size={16} />
+                                            </div>
+                                            <span className="text-sm font-medium">{s.address || 'N/A'}</span>
+                                        </div>
 
-                                    <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                                        <span className="text-xs font-bold text-gray-400 uppercase">{s.category}</span>
-                                        <Button
-                                            variant="secondary"
-                                            className="px-4 py-1 h-8 text-xs font-black uppercase tracking-tighter rounded-lg gap-2"
-                                            onClick={() => openOrderModal(s)}
-                                        >
-                                            <ShoppingCart size={14} /> Solicitar Pedido
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                        <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                                            <span className="text-xs font-bold text-gray-400 uppercase">{s.category}</span>
+                                            {!isInactive && (
+                                                <Button
+                                                    variant="secondary"
+                                                    className="px-4 py-1 h-8 text-xs font-black uppercase tracking-tighter rounded-lg gap-2"
+                                                    onClick={() => openOrderModal(s)}
+                                                >
+                                                    <ShoppingCart size={14} /> Solicitar Pedido
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -268,11 +367,11 @@ const Suppliers = () => {
             {/* Add/Edit Supplier Modal */}
             <Modal
                 isOpen={isAddModalOpen || isEditModalOpen}
-                onClose={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }}
+                onClose={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); setFormErrors({}); }}
                 title={isEditModalOpen ? "Editar Proveedor" : "Nuevo Proveedor"}
                 footer={
                     <>
-                        <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }}>Cancelar</Button>
+                        <Button variant="outline" onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); setFormErrors({}); }}>Cancelar</Button>
                         <Button onClick={handleSaveSupplier} disabled={isSubmitting}>
                             {isSubmitting ? 'Guardando...' : 'Guardar'}
                         </Button>
@@ -285,8 +384,10 @@ const Suppliers = () => {
                         <Input
                             placeholder="Ej. Distribuidora Farma"
                             value={supplierForm.name}
-                            onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })}
+                            onChange={e => { setSupplierForm({ ...supplierForm, name: e.target.value }); setFormErrors({ ...formErrors, name: undefined }); }}
+                            className={formErrors.name ? 'border-red-400' : ''}
                         />
+                        {renderFieldError('name')}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -312,16 +413,20 @@ const Suppliers = () => {
                             <Input
                                 placeholder="+505 8888-8888"
                                 value={supplierForm.phone}
-                                onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+                                onChange={e => { setSupplierForm({ ...supplierForm, phone: e.target.value }); setFormErrors({ ...formErrors, phone: undefined }); }}
+                                className={formErrors.phone ? 'border-red-400' : ''}
                             />
+                            {renderFieldError('phone')}
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Email</label>
                             <Input
                                 placeholder="contacto@empresa.com"
                                 value={supplierForm.email}
-                                onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })}
+                                onChange={e => { setSupplierForm({ ...supplierForm, email: e.target.value }); setFormErrors({ ...formErrors, email: undefined }); }}
+                                className={formErrors.email ? 'border-red-400' : ''}
                             />
+                            {renderFieldError('email')}
                         </div>
                     </div>
                     <div className="space-y-2">

@@ -5,7 +5,7 @@ const db = require('../db');
 // GET /api/suppliers - Fetch all suppliers
 router.get('/', async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM suppliers ORDER BY name');
+        const result = await db.query('SELECT * FROM suppliers ORDER BY status ASC, name ASC');
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -23,8 +23,8 @@ router.post('/', async (req, res) => {
         }
 
         const result = await db.query(
-            'INSERT INTO suppliers (name, contact_person, phone, email, category) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [name, contact_person || null, phone || null, email || null, category || null]
+            'INSERT INTO suppliers (name, contact_person, phone, email, category, address, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+            [name, contact_person || null, phone || null, email || null, category || null, address || null, 'active']
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -37,16 +37,40 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, contact_person, phone, email, category } = req.body;
+        const { name, contact_person, phone, email, category, address } = req.body;
 
         const result = await db.query(
-            'UPDATE suppliers SET name = $1, contact_person = $2, phone = $3, email = $4, category = $5 WHERE id = $6 RETURNING *',
-            [name, contact_person, phone, email, category, id]
+            'UPDATE suppliers SET name = $1, contact_person = $2, phone = $3, email = $4, category = $5, address = $6 WHERE id = $7 RETURNING *',
+            [name, contact_person, phone, email, category, address || null, id]
         );
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Supplier not found' });
         }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+// PUT /api/suppliers/:id/toggle-status - Toggle supplier active/inactive
+router.put('/:id/toggle-status', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get current status
+        const current = await db.query('SELECT status FROM suppliers WHERE id = $1', [id]);
+        if (current.rows.length === 0) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
+        const newStatus = current.rows[0].status === 'active' ? 'inactive' : 'active';
+        const result = await db.query(
+            'UPDATE suppliers SET status = $1 WHERE id = $2 RETURNING *',
+            [newStatus, id]
+        );
 
         res.json(result.rows[0]);
     } catch (err) {

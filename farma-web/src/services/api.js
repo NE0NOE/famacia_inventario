@@ -26,34 +26,25 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Products API
 export const productsAPI = {
-    // GET /api/products - Fetch all products
     getAll: () => fetchAPI('/products'),
-
-    // GET /api/products/:id - Fetch a single product
     getById: (id) => fetchAPI(`/products/${id}`),
-
-    // POST /api/products - Create a new product
     create: (product) => fetchAPI('/products', {
         method: 'POST',
         body: JSON.stringify(product),
     }),
-
-    // PUT /api/products/:id - Update an existing product
     update: (id, product) => fetchAPI(`/products/${id}`, {
         method: 'PUT',
         body: JSON.stringify(product),
     }),
-
-    // DELETE /api/products/:id - Remove a product
     delete: (id) => fetchAPI(`/products/${id}`, {
         method: 'DELETE',
     }),
 };
 
-// Future APIs (to be implemented)
 export const clientsAPI = {
     getAll: () => fetchAPI('/clients'),
     getById: (id) => fetchAPI(`/clients/${id}`),
+    getSales: (id) => fetchAPI(`/clients/${id}/sales`),
     create: (client) => fetchAPI('/clients', {
         method: 'POST',
         body: JSON.stringify(client),
@@ -77,6 +68,9 @@ export const suppliersAPI = {
     update: (id, supplier) => fetchAPI(`/suppliers/${id}`, {
         method: 'PUT',
         body: JSON.stringify(supplier),
+    }),
+    toggleStatus: (id) => fetchAPI(`/suppliers/${id}/toggle-status`, {
+        method: 'PUT',
     }),
     delete: (id) => fetchAPI(`/suppliers/${id}`, {
         method: 'DELETE',

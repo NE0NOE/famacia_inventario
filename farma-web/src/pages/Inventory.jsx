@@ -7,6 +7,7 @@ import { Search, Plus, Filter, Edit2, Trash2, ArrowUpDown, Loader2 } from 'lucid
 import { cn } from '@/lib/utils';
 import Modal from '@/components/ui/modal';
 import { productsAPI } from '@/services/api';
+import { validateRequired, validatePrice, validateStock } from '@/lib/validators';
 
 const Inventory = () => {
     const [products, setProducts] = useState([]);
@@ -19,6 +20,7 @@ const Inventory = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formErrors, setFormErrors] = useState({});
 
     // Form state
     const [formData, setFormData] = useState({
@@ -53,11 +55,22 @@ const Inventory = () => {
         return 'Disponible';
     };
 
-    const handleAddProduct = async () => {
-        if (!formData.name || !formData.price) {
-            alert('Nombre y precio son requeridos');
-            return;
+    const validateFormData = () => {
+        const errors = {};
+        const nameResult = validateRequired(formData.name, 'El nombre');
+        if (!nameResult.valid) errors.name = nameResult.message;
+        const priceResult = validatePrice(formData.price);
+        if (!priceResult.valid) errors.price = priceResult.message;
+        if (formData.stock !== '' && formData.stock !== undefined) {
+            const stockResult = validateStock(formData.stock);
+            if (!stockResult.valid) errors.stock = stockResult.message;
         }
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleAddProduct = async () => {
+        if (!validateFormData()) return;
 
         setIsSubmitting(true);
         try {
@@ -79,10 +92,7 @@ const Inventory = () => {
     };
 
     const handleEditProduct = async () => {
-        if (!formData.name || !formData.price) {
-            alert('Nombre y precio son requeridos');
-            return;
-        }
+        if (!validateFormData()) return;
 
         setIsSubmitting(true);
         try {
@@ -137,6 +147,12 @@ const Inventory = () => {
 
     const resetForm = () => {
         setFormData({ sku: '', name: '', category: '', price: '', stock: '' });
+        setFormErrors({});
+    };
+
+    const renderFieldError = (field) => {
+        if (!formErrors[field]) return null;
+        return <p className="text-red-500 text-xs mt-1 font-medium">{formErrors[field]}</p>;
     };
 
     const filteredProducts = products.filter(product =>
@@ -296,8 +312,10 @@ const Inventory = () => {
                             <Input
                                 placeholder="Ej. Paracetamol 500mg"
                                 value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFormErrors({ ...formErrors, name: undefined }); }}
+                                className={formErrors.name ? 'border-red-400' : ''}
                             />
+                            {renderFieldError('name')}
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Código / SKU</label>
@@ -322,18 +340,25 @@ const Inventory = () => {
                             <Input
                                 type="number"
                                 placeholder="0.00"
+                                min="0"
+                                step="0.01"
                                 value={formData.price}
-                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                onChange={(e) => { setFormData({ ...formData, price: e.target.value }); setFormErrors({ ...formErrors, price: undefined }); }}
+                                className={formErrors.price ? 'border-red-400' : ''}
                             />
+                            {renderFieldError('price')}
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Stock Inicial</label>
                             <Input
                                 type="number"
                                 placeholder="0"
+                                min="0"
                                 value={formData.stock}
-                                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                                onChange={(e) => { setFormData({ ...formData, stock: e.target.value }); setFormErrors({ ...formErrors, stock: undefined }); }}
+                                className={formErrors.stock ? 'border-red-400' : ''}
                             />
+                            {renderFieldError('stock')}
                         </div>
                     </div>
                 </div>
@@ -360,8 +385,10 @@ const Inventory = () => {
                             <Input
                                 placeholder="Ej. Paracetamol 500mg"
                                 value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setFormErrors({ ...formErrors, name: undefined }); }}
+                                className={formErrors.name ? 'border-red-400' : ''}
                             />
+                            {renderFieldError('name')}
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">Código / SKU</label>
@@ -386,8 +413,11 @@ const Inventory = () => {
                             <Input
                                 type="number"
                                 placeholder="0.00"
+                                min="0"
+                                step="0.01"
                                 value={formData.price}
-                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                onChange={(e) => { setFormData({ ...formData, price: e.target.value }); setFormErrors({ ...formErrors, price: undefined }); }}
+                                className={formErrors.price ? 'border-red-400' : ''}
                             />
                         </div>
                         <div className="space-y-2">

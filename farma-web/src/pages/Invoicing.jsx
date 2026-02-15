@@ -3,7 +3,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, Download, Printer, Eye, Calendar, Clock, Loader2, Package } from 'lucide-react';
+import { Search, FileText, Download, Printer, Eye, Calendar, Clock, Loader2, Package, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { salesAPI } from '@/services/api';
 import Modal from '@/components/ui/modal';
@@ -45,7 +45,7 @@ const Invoicing = () => {
             ...sales.map(sale => [
                 sale.id,
                 new Date(sale.timestamp).toLocaleDateString('es-NI'),
-                sale.client_id || 'Consumidor Final',
+                sale.client_name || 'Consumidor Final',
                 'N/A', // Tipo
                 sale.payment_method,
                 sale.total,
@@ -141,6 +141,7 @@ const Invoicing = () => {
 
     const filteredSales = sales.filter(sale =>
         sale.id.toString().includes(searchQuery) ||
+        (sale.client_name && sale.client_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (sale.client_id && sale.client_id.toString().includes(searchQuery))
     );
 
@@ -222,7 +223,7 @@ const Invoicing = () => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <Input
                                 className="pl-10 h-11 bg-slate-50 border-none rounded-xl"
-                                placeholder="Buscar por ID de venta..."
+                                placeholder="Buscar por ID o nombre de cliente..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -250,6 +251,7 @@ const Invoicing = () => {
                                         <tr className="bg-blue-50/20">
                                             <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">ID Venta</th>
                                             <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                                            <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Cliente</th>
                                             <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Método Pago</th>
                                             <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Items</th>
                                             <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Total</th>
@@ -259,13 +261,19 @@ const Invoicing = () => {
                                     <tbody className="divide-y divide-gray-50">
                                         {filteredSales.length === 0 ? (
                                             <tr>
-                                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">No hay ventas registradas</td>
+                                                <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No hay ventas registradas</td>
                                             </tr>
                                         ) : (
                                             filteredSales.map((sale) => (
                                                 <tr key={sale.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="px-6 py-4 font-bold text-primary">#{sale.id}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-500 font-medium">{formatDate(sale.timestamp)}</td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <User size={14} className="text-gray-400" />
+                                                            <span className="font-medium text-gray-700 text-sm">{sale.client_name || 'Consumidor Final'}</span>
+                                                        </div>
+                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <span className="text-[10px] font-black uppercase text-gray-500 border border-gray-200 px-2 py-0.5 rounded bg-gray-50">
                                                             {sale.payment_method}
@@ -324,10 +332,14 @@ const Invoicing = () => {
                     </div>
                 ) : selectedSale ? (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-gray-100">
+                        <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-gray-100">
                             <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase">Fecha</p>
                                 <p className="font-semibold text-gray-800">{formatDate(selectedSale.timestamp)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase">Cliente</p>
+                                <p className="font-semibold text-gray-800">{selectedSale.client_name || 'Consumidor Final'}</p>
                             </div>
                             <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase">Método de Pago</p>

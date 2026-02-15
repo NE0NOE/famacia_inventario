@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-// GET /api/sales - Fetch all sales
+// GET /api/sales - Fetch all sales with client name
 router.get('/', async (req, res) => {
     try {
         const result = await db.query(`
-            SELECT s.*, COUNT(si.id) as items_count 
+            SELECT s.*, c.name as client_name, COUNT(si.id) as items_count 
             FROM sales s 
+            LEFT JOIN clients c ON s.client_id = c.id
             LEFT JOIN sale_items si ON s.id = si.sale_id 
-            GROUP BY s.id 
+            GROUP BY s.id, c.name 
             ORDER BY s.timestamp DESC
         `);
         res.json(result.rows);
@@ -24,8 +25,11 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Get sale
-        const saleResult = await db.query('SELECT * FROM sales WHERE id = $1', [id]);
+        // Get sale with client name
+        const saleResult = await db.query(
+            'SELECT s.*, c.name as client_name FROM sales s LEFT JOIN clients c ON s.client_id = c.id WHERE s.id = $1',
+            [id]
+        );
         if (saleResult.rows.length === 0) {
             return res.status(404).json({ error: 'Sale not found' });
         }
@@ -103,6 +107,14 @@ router.post('/', async (req, res) => {
                 await db.query(
                     'UPDATE products SET stock = stock - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
                     [item.quantity, item.product_id]
+                );
+            }
+
+            // Update client last_visit if client was selected
+            if (client_id) {
+                await db.query(
+                    'UPDATE clients SET last_visit = CURRENT_TIMESTAMP WHERE id = $1',
+                    [client_id]
                 );
             }
 

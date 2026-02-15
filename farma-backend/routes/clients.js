@@ -28,6 +28,38 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// GET /api/clients/:id/sales - Fetch purchase history for a client
+router.get('/:id/sales', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await db.query(`
+            SELECT s.id, s.total, s.payment_method, s.timestamp, COUNT(si.id) as items_count
+            FROM sales s
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            WHERE s.client_id = $1
+            GROUP BY s.id
+            ORDER BY s.timestamp DESC
+            LIMIT 50
+        `, [id]);
+
+        // Also get total spent
+        const statsResult = await db.query(`
+            SELECT COALESCE(SUM(total), 0) as total_spent, COUNT(*) as total_purchases
+            FROM sales
+            WHERE client_id = $1
+        `, [id]);
+
+        res.json({
+            sales: result.rows,
+            stats: statsResult.rows[0]
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // POST /api/clients - Create a new client
 router.post('/', async (req, res) => {
     try {
@@ -44,6 +76,9 @@ router.post('/', async (req, res) => {
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'Ya existe un cliente con esa cédula/RUC' });
+        }
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
@@ -66,6 +101,9 @@ router.put('/:id', async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'Ya existe un cliente con esa cédula/RUC' });
+        }
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });

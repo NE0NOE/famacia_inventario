@@ -3,9 +3,9 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, Package, Loader2 } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, Package, Loader2, User, X } from 'lucide-react';
 import Modal from '@/components/ui/modal';
-import { productsAPI, salesAPI } from '@/services/api';
+import { productsAPI, salesAPI, clientsAPI } from '@/services/api';
 
 const POS = () => {
     const [cart, setCart] = useState([]);
@@ -21,9 +21,16 @@ const POS = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Fetch products from API
+    // Client selector
+    const [clients, setClients] = useState([]);
+    const [selectedClient, setSelectedClient] = useState(null);
+    const [clientSearch, setClientSearch] = useState('');
+    const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
+
+    // Fetch products and clients from API
     useEffect(() => {
         loadProducts();
+        loadClients();
     }, []);
 
     const loadProducts = async () => {
@@ -40,9 +47,20 @@ const POS = () => {
         }
     };
 
+    const loadClients = async () => {
+        try {
+            const data = await clientsAPI.getAll();
+            setClients(data);
+        } catch (err) {
+            console.error('Error loading clients:', err);
+        }
+    };
+
     const addToCart = (product) => {
+        if (product.stock <= 0) return;
         const existing = cart.find(item => item.id === product.id);
         if (existing) {
+            if (existing.quantity >= product.stock) return; // Don't exceed stock
             setCart(cart.map(item =>
                 item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
             ));
@@ -59,6 +77,9 @@ const POS = () => {
         setCart(cart.map(item => {
             if (item.id === id) {
                 const newQty = Math.max(1, item.quantity + delta);
+                // Check stock limit
+                const product = products.find(p => p.id === id);
+                if (product && newQty > product.stock) return item;
                 return { ...item, quantity: newQty };
             }
             return item;
@@ -72,6 +93,7 @@ const POS = () => {
         try {
             const currentTotal = subtotal;
             const saleData = {
+                client_id: selectedClient?.id || null,
                 subtotal: currentTotal,
                 total: currentTotal,
                 payment_method: paymentMethod,
@@ -87,6 +109,7 @@ const POS = () => {
             setLastTotal(currentTotal);
             setIsSuccessModalOpen(true);
             setCart([]);
+            setSelectedClient(null);
             await loadProducts(); // Reload to update stock
         } catch (err) {
             alert('Error al procesar la venta: ' + (err.message || 'Error desconocido'));
@@ -101,6 +124,12 @@ const POS = () => {
     const filteredProducts = products.filter(product =>
         product.name.toLowerCase().includes(search.toLowerCase()) ||
         product.sku?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const filteredClients = clients.filter(client =>
+        client.name?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        client.client_id?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+        client.phone?.includes(clientSearch)
     );
 
     return (
@@ -138,7 +167,11 @@ const POS = () => {
                     ) : (
                         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {filteredProducts.map(product => (
-                                <Card key={product.id} className="cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none" onClick={() => addToCart(product)}>
+                                <Card
+                                    key={product.id}
+                                    className={`cursor-pointer hover:shadow-md transition-shadow group overflow-hidden border-none ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    onClick={() => addToCart(product)}
+                                >
                                     <div className="h-24 bg-blue-50 flex items-center justify-center text-blue-200 group-hover:bg-blue-100 transition-colors">
                                         <Package size={40} />
                                     </div>
@@ -167,6 +200,67 @@ const POS = () => {
                         <p className="text-blue-100 text-sm mt-1">{cart.length} productos seleccionados</p>
                     </div>
 
+                    {/* Client Selector */}
+                    <div className="px-4 pt-4">
+                        <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-2">Cliente</label>
+                        {selectedClient ? (
+                            <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                                <div className="h-8 w-8 rounded-full bg-blue-200 flex items-center justify-center text-blue-700">
+                                    <User size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-gray-800 text-sm truncate">{selectedClient.name}</p>
+                                    <p className="text-xs text-gray-500">{selectedClient.client_id || 'Sin cédula'}</p>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedClient(null)}
+                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <Input
+                                    className="pl-10 h-10 text-sm bg-slate-50 border-gray-200 rounded-xl"
+                                    placeholder="Consumidor Final (buscar cliente...)"
+                                    value={clientSearch}
+                                    onChange={(e) => {
+                                        setClientSearch(e.target.value);
+                                        setIsClientDropdownOpen(true);
+                                    }}
+                                    onFocus={() => setIsClientDropdownOpen(true)}
+                                    onBlur={() => setTimeout(() => setIsClientDropdownOpen(false), 200)}
+                                />
+                                {isClientDropdownOpen && clientSearch && filteredClients.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                                        {filteredClients.slice(0, 5).map(client => (
+                                            <button
+                                                key={client.id}
+                                                className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors flex items-center gap-3 border-b border-gray-50 last:border-none"
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setSelectedClient(client);
+                                                    setClientSearch('');
+                                                    setIsClientDropdownOpen(false);
+                                                }}
+                                            >
+                                                <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                                    <User size={14} />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm text-gray-800">{client.name}</p>
+                                                    <p className="text-xs text-gray-500">{client.client_id || client.phone || ''}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
                         {cart.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50">
@@ -187,6 +281,13 @@ const POS = () => {
                                             <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.stopPropagation(); updateQuantity(item.id, 1); }}>
                                                 <Plus size={14} />
                                             </Button>
+                                            {(() => {
+                                                const product = products.find(p => p.id === item.id);
+                                                if (product && item.quantity >= product.stock) {
+                                                    return <span className="text-[10px] text-red-500 font-bold">MÁX</span>;
+                                                }
+                                                return null;
+                                            })()}
                                         </div>
                                     </div>
                                     <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeFromCart(item.id)}>
