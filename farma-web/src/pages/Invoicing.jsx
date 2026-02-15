@@ -64,10 +64,54 @@ const Invoicing = () => {
         document.body.removeChild(link);
     };
 
+    const generateInvoiceHTML = (saleDetails) => {
+        return `
+            <html>
+                <head>
+                    <title>Factura #${saleDetails.id}</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
+                        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
+                        .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+                        .total { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-weight: bold; }
+                        .footer { margin-top: 20px; text-align: center; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h3>FARMACIA DULCE ESPERANZA</h3>
+                        <p>RUC: J0310000000000</p>
+                        <p>Tel: +505 2222-2222</p>
+                        <p>Factura: #${saleDetails.id}</p>
+                        <p>Cliente: ${saleDetails.client_name || 'Consumidor Final'}</p>
+                        <p>Fecha: ${new Date(saleDetails.timestamp).toLocaleString('es-NI')}</p>
+                    </div>
+                    <div>
+                        ${saleDetails.items ? saleDetails.items.map(item => `
+                            <div class="row">
+                                <span>${item.quantity} x ${item.product_name || 'Producto'}</span>
+                                <span>C$ ${(item.quantity * item.price_at_sale).toFixed(2)}</span>
+                            </div>
+                        `).join('') : '<p>Detalles no disponibles</p>'}
+                    </div>
+                    <div class="row total">
+                        <span>TOTAL</span>
+                        <span>C$ ${parseFloat(saleDetails.total).toFixed(2)}</span>
+                    </div>
+                    <div class="footer">
+                        <p>¡Gracias por su compra!</p>
+                    </div>
+                </body>
+            </html>
+        `;
+    };
+
+    const isElectron = () => {
+        return typeof window !== 'undefined' && window.process && window.process.type;
+    };
+
     const handlePrint = async (sale) => {
         try {
-            // Get full details if not present (though sale object might have basics, items usually need fetch)
-            // But for quick print we might need to fetch details first if not in the list
             let saleDetails = sale;
             if (!sale.items) {
                 try {
@@ -77,47 +121,25 @@ const Invoicing = () => {
                 }
             }
 
+            const htmlContent = generateInvoiceHTML(saleDetails);
+
+            // Use Electron IPC if running in desktop app
+            if (isElectron()) {
+                try {
+                    const { ipcRenderer } = window.require('electron');
+                    ipcRenderer.send('print-invoice', htmlContent);
+                    return;
+                } catch (e) {
+                    console.warn('Electron IPC not available, falling back to window.open', e);
+                }
+            }
+
+            // Fallback: standard browser print (web version)
             const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Factura #${saleDetails.id}</title>
-                        <style>
-                            body { font-family: 'Courier New', monospace; padding: 20px; max-width: 300px; margin: 0 auto; }
-                            .header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-                            .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                            .total { border-top: 1px dashed #000; margin-top: 10px; padding-top: 10px; font-weight: bold; }
-                            .footer { margin-top: 20px; text-align: center; font-size: 12px; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="header">
-                            <h3>FARMACIA DULCE ESPERANZA</h3>
-                            <p>RUC: J0310000000000</p>
-                            <p>Tel: +505 2222-2222</p>
-                            <p>Factura: #${saleDetails.id}</p>
-                            <p>Fecha: ${new Date(saleDetails.timestamp).toLocaleString('es-NI')}</p>
-                        </div>
-                        <div>
-                            ${saleDetails.items ? saleDetails.items.map(item => `
-                                <div class="row">
-                                    <span>${item.quantity} x ${item.product_name || 'Producto'}</span>
-                                    <span>C$ ${(item.quantity * item.price_at_sale).toFixed(2)}</span>
-                                </div>
-                            `).join('') : '<p>Detalles no disponibles</p>'}
-                        </div>
-                        <div class="row total">
-                            <span>TOTAL</span>
-                            <span>C$ ${parseFloat(saleDetails.total).toFixed(2)}</span>
-                        </div>
-                        <div class="footer">
-                            <p>¡Gracias por su compra!</p>
-                        </div>
-                        <script>
-                            window.onload = function() { window.print(); window.close(); }
-                        </script>
-                    </body>
-                </html>
+            printWindow.document.write(htmlContent + `
+                <script>
+                    window.onload = function() { window.print(); window.close(); }
+                </script>
             `);
             printWindow.document.close();
         } catch (err) {
