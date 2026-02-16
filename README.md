@@ -26,8 +26,10 @@ El sistema está compuesto por tres módulos interconectados:
 
 | Plataforma | Descarga |
 |---|---|
-| 📱 **Android (APK)** | [⬇️ Descargar APK](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/app-debug.apk) |
-| 🐧 **Linux (AppImage)** | [⬇️ Descargar AppImage](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/Farmacia.Dulce.Esperanza-1.0.0.AppImage) |
+| 📱 **Android (APK)** | [⬇️ Descargar APK](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/Farmacia_Dulce_Esperanza.apk) |
+| 🪟 **Windows (EXE)** | [⬇️ Descargar Instalador](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/Farmacia.Dulce.Esperanza.Setup.1.0.0.exe) |
+| 🐧 **Linux (AppImage)** | [⬇️ Descargar AppImage](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/Farmacia_Dulce_Esperanza.AppImage) |
+| 🐧 **Linux (Debian/Ubuntu)** | [⬇️ Descargar .deb](https://github.com/NE0NOE/famacia_inventario/releases/latest/download/farma-desktop_amd64.deb) |
 | 🌐 **Web** | Despliegue mediante Docker (`docker compose up --build`) |
 
 > **Nota:** Para instalar el APK en Android, debes habilitar la instalación de "Fuentes desconocidas" en la configuración de tu dispositivo.
