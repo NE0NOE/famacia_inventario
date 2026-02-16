@@ -17,6 +17,7 @@
       "output": "dist"
     },
     "linux": {
+      "icon": "assets/icon.png",
       "target": [
         "AppImage",
         "deb"
@@ -24,14 +25,17 @@
       "category": "Office"
     },
     "win": {
+      "icon": "assets/icon.png",
       "target": "nsis"
     }
   },
   "keywords": [],
-  "author": "",
+  "author": "NE0NOE <ne0noe@example.com>",
+  "homepage": "https://github.com/NE0NOE/famacia_inventario",
   "license": "ISC",
   "devDependencies": {
     "electron": "^40.1.0",
-    "electron-builder": "^26.7.0"
+    "electron-builder": "^26.7.0",
+    "sharp": "^0.34.5"
   }
 }
