@@ -4,8 +4,21 @@ dist/
 .env
 documentacion/
 
+# Android y compilación
+.gradle/
+build/
+app/build/
+farma-mobile/android/build/
+farma-mobile/android/app/build/
+local.properties
+*.jks
+*.keystore
+.idea/
+*.iml
+
 # Permitir ejecutables en la carpeta de builds finales
 !farma-desktop/builds_finales/*.exe
 !farma-desktop/builds_finales/*.AppImage
 !farma-desktop/builds_finales/*.deb
 !farma-mobile/builds_finales/*.apk
+
